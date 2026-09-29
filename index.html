@@ -16,7 +16,6 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
 .falling-emoji {
   position: fixed;
   top: -60px;
-  /* Vùng bấm rất rộng quanh biểu tượng, không làm thay đổi kích thước hiển thị */
   padding: 50px;
   margin: -50px;
   font-size: 34px;
@@ -28,11 +27,6 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
   text-shadow: 0 0 3px rgba(255,255,255,0.8), 0 0 7px rgba(255,255,255,0.35);
   transition: transform 0.15s ease, filter 0.15s ease;
   will-change: transform, top;
-}
-.falling-emoji:nth-of-type(3n),
-.falling-emoji:nth-of-type(3n + 1) {
-  color: #ffffff;
-  text-shadow: 0 0 3px rgba(255,255,255,0.8), 0 0 7px rgba(255,255,255,0.35);
 }
 .falling-emoji:hover {
   transform: scale(1.35) rotate(12deg);
@@ -123,13 +117,6 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
   margin-bottom: 14px;
 }
 
-#modalCaption {
-  font-size: 22px;
-  opacity: 0.9;
-  line-height: 1.5;
-  max-width: 92%;
-}
-
 #modalClose {
   position: absolute;
   top: 10px;
@@ -142,7 +129,6 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
   line-height: 1;
 }
 
-/* Bố cục gọn hơn trên màn hình nhỏ */
 @media (max-width: 600px) {
   #modalCard {
     width: 100vw;
@@ -189,33 +175,43 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
 <script>
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
+const TAU = Math.PI * 2;
 
 let w, h;
-let bgStars = [];
-function buildBgStars(){
-  const count = Math.round((w * h) / 7500); // ít chấm nền hơn
-  bgStars = [];
+
+const bgCanvas = document.createElement("canvas");
+const bgCtx = bgCanvas.getContext("2d");
+function buildBg(){
+  bgCanvas.width = w; bgCanvas.height = h;
+  const skyGrad = bgCtx.createLinearGradient(0, 0, 0, h);
+  skyGrad.addColorStop(0, "#050514");
+  skyGrad.addColorStop(0.55, "#0b0a24");
+  skyGrad.addColorStop(1, "#170a20");
+  bgCtx.fillStyle = skyGrad;
+  bgCtx.fillRect(0, 0, w, h);
+
+  const count = Math.round((w * h) / 7500);
   for(let i = 0; i < count; i++){
-    bgStars.push({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: 0.25 + Math.random() * 0.75,
-      baseO: 0.3 + Math.random() * 0.35 // độ sáng cố định
-    });
+    const r = 0.25 + Math.random() * 0.75;
+    bgCtx.globalAlpha = 0.3 + Math.random() * 0.35;
+    bgCtx.beginPath();
+    bgCtx.arc(Math.random() * w, Math.random() * h, r, 0, TAU);
+    bgCtx.fillStyle = "#ffffff";
+    bgCtx.fill();
   }
+  bgCtx.globalAlpha = 1;
 }
 function resize(){
   w = canvas.width = window.innerWidth;
   h = canvas.height = window.innerHeight;
-  buildBgStars();
+  buildBg();
 }
 window.addEventListener("resize", resize);
 resize();
 
-const COUNT = 14000; // tăng số hạt để tim rõ và dày hơn
+const COUNT = 14000;
 const particles = [];
 
-// màu gradient cho tim: trung tâm hồng sáng, viền đỏ hồng đậm — đẹp và có chiều sâu hơn
 const HEART_CENTER_RGB = [255, 205, 220];
 const HEART_EDGE_RGB = [255, 55, 140];
 function heartColorAt(k){
@@ -225,7 +221,6 @@ function heartColorAt(k){
   return [r, g, b];
 }
 
-/* ===== HÌNH TIM GIỮ NGUYÊN ===== */
 function heart(t){
   return {
     x: 16 * Math.sin(t)**3,
@@ -236,10 +231,9 @@ function heart(t){
   };
 }
 
-/* ===== PHÂN BỐ HẠT GIỮ NGUYÊN ===== */
 function sampleHeartPoint(){
   while(true){
-    const ang = Math.random() * Math.PI * 2;
+    const ang = Math.random() * TAU;
     const k = Math.pow(Math.random(), 0.35);
     const p = heart(ang);
     const center = Math.abs(p.x * k);
@@ -261,32 +255,57 @@ function generate(){
       baseO,
       rgb,
       colorStr: `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`,
-      phase: Math.random() * Math.PI * 2,
+      phase: Math.random() * TAU,
       speed: 0.006 + Math.random() * 0.01,
-      target: null // sẽ gán vị trí đích trên bánh sau khi tạo xong bánh
+      glint: Math.random() < 0.006,
+      target: null
     });
   }
 }
 generate();
 
-/* ===================== BÁNH SINH NHẬT — VẼ NÉT 2D + LẤY MẪU ĐIỂM ẢNH (ĐÚNG FILE MẪU) ===================== */
-/* Toàn bộ cách vẽ, ngọn lửa hình trái tim, vùng màu và mật độ giữ đúng như file mẫu.
-   Màu của hạt thân/viền (không đổi theo thời gian) được tính sẵn 1 lần khi tạo hạt,
-   chỉ ngọn lửa mới cần tính động mỗi khung hình — giữ đúng hiệu ứng nhưng đỡ nặng. */
-
 const artCanvas = document.createElement("canvas");
 artCanvas.width = 700; artCanvas.height = 900;
 const ac = artCanvas.getContext("2d");
 
-function cEllipse(c, x, y, rx, ry, fill){ c.beginPath(); c.ellipse(x,y,rx,ry,0,0,Math.PI*2); fill ? c.fill() : c.stroke(); }
+function cEllipse(c, x, y, rx, ry, fill){ c.beginPath(); c.ellipse(x,y,rx,ry,0,0,TAU); fill ? c.fill() : c.stroke(); }
 function cLine(c, points, width){ width = width===undefined?3:width; c.beginPath(); c.moveTo(points[0][0],points[0][1]); for(let i=1;i<points.length;i++) c.lineTo(points[i][0],points[i][1]); c.lineWidth=width; c.stroke(); }
 function cCurve(c, x, y, w, h){ c.beginPath(); c.moveTo(x,y); c.bezierCurveTo(x+w*.2,y+h, x+w*.8,y+h, x+w,y); c.stroke(); }
+
+function sprinkleRow(c, xStart, xEnd, step, y, opts){
+  opts = opts || {};
+  const curveW = opts.curveW !== undefined ? opts.curveW : 9;
+  const curveH = opts.curveH !== undefined ? opts.curveH : 12;
+  const dotY = opts.dotY !== undefined ? opts.dotY : 16;
+  const dotR = opts.dotR !== undefined ? opts.dotR : 2;
+  const alpha = opts.alpha !== undefined ? opts.alpha : 0.6;
+  c.save();
+  c.globalAlpha = alpha;
+  for(let x = xStart; x <= xEnd; x += step){
+    c.beginPath();
+    c.moveTo(x - curveW, y);
+    c.quadraticCurveTo(x, y + curveH, x + curveW, y);
+    c.stroke();
+    c.beginPath(); c.arc(x, y + dotY, dotR, 0, TAU); c.fill();
+  }
+  c.restore();
+}
+
+function pearlTrim(c, x, yTop, yBottom, spacing, r, alpha){
+  c.save();
+  c.globalAlpha = alpha;
+  for(let y = yTop; y <= yBottom; y += spacing){
+    c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+  }
+  c.restore();
+}
 
 function buildCakeArt(){
   const aw = 700, ah = 900;
   ac.clearRect(0,0,aw,ah); ac.lineCap = "round"; ac.lineJoin = "round";
   ac.strokeStyle = "#d95778"; ac.fillStyle = "#d95778";
   const tiers = [[115,690,585,835],[155,555,545,690],[205,435,495,555],[250,325,450,435]];
+  ac.strokeStyle = "#c94368";
   tiers.forEach(([l,t,r,b])=>{
     const cx=(l+r)/2, cy=(t+b)/2, width=(r-l)/2;
     const outerR = Math.hypot(r-cx, b-cy) * 1.02;
@@ -296,12 +315,51 @@ function buildCakeArt(){
     bodyGrad.addColorStop(.85, "rgba(217,87,120,0.1)");
     bodyGrad.addColorStop(1, "rgba(217,87,120,0.135)");
     ac.fillStyle = bodyGrad; ac.fillRect(l,t,r-l,b-t); ac.fillStyle = "#d95778";
-    ac.globalAlpha = .9;
-    ac.lineWidth = 1.12;
+    ac.globalAlpha = 1;
+    ac.lineWidth = 2.4;
     cEllipse(ac,cx,t,width,25); cEllipse(ac,cx,b,width,22);
-    cLine(ac,[[l,t+8],[l,b-8]],.7);
-    cLine(ac,[[r,t+8],[r,b-8]],.7);
+    cLine(ac,[[l,t+8],[l,b-8]],1.8);
+    cLine(ac,[[r,t+8],[r,b-8]],1.8);
+    ac.fillStyle = "#d95778";
+    pearlTrim(ac, l+6, t+14, b-14, 15, 1.4, .5);
+    pearlTrim(ac, r-6, t+14, b-14, 15, 1.4, .5);
+    ac.fillStyle = "#f08aa0";
+    ac.globalAlpha = .55;
+    for(let x = l + 18; x <= r - 18; x += 20){
+      ac.beginPath();
+      ac.moveTo(x - 10, t - 6);
+      ac.quadraticCurveTo(x, t + 5, x + 10, t - 6);
+      ac.stroke();
+    }
+    ac.globalAlpha = .22;
+    ac.lineWidth = .6;
+    for(let x = l + width*0.35; x < r - width*0.1; x += width*0.62){
+      cLine(ac,[[x,t+16],[x,b-14]],.6);
+    }
   });
+
+  // Soft pink icing with rounded drips along the front of each cake tier.
+  ac.save();
+  ac.fillStyle = "#ffd0dc";
+  ac.strokeStyle = "#ffd0dc";
+  ac.lineWidth = 2.2;
+  ac.globalAlpha = .78;
+  [[115,690,585],[155,555,545],[205,435,495],[250,325,450]].forEach(([l,t,r], tierIndex)=>{
+    ac.beginPath();
+    ac.moveTo(l + 12, t + 8);
+    ac.quadraticCurveTo((l + r) / 2, t + 17, r - 12, t + 8);
+    ac.stroke();
+    for(let x = l + 32, i = 0; x < r - 20; x += 52, i++){
+      const drip = 10 + ((i + tierIndex) % 3) * 5;
+      ac.beginPath();
+      ac.moveTo(x - 6, t + 9);
+      ac.bezierCurveTo(x - 6, t + drip, x - 3, t + drip + 5, x, t + drip + 5);
+      ac.bezierCurveTo(x + 4, t + drip + 5, x + 6, t + drip, x + 6, t + 9);
+      ac.closePath();
+      ac.fill();
+    }
+  });
+  ac.restore();
 
   ac.save();
   ac.strokeStyle = "#d95778";
@@ -323,16 +381,16 @@ function buildCakeArt(){
       ac.stroke();
       ac.globalAlpha = .85;
       for (let i = 0; i < 5; i++) {
-        const angle = -Math.PI / 2 + i * Math.PI * 2 / 5;
+        const angle = -Math.PI / 2 + i * TAU / 5;
         const px = x + Math.cos(angle) * 4.5;
         const py = y + 15 + Math.sin(angle) * 3.6;
-        ac.beginPath(); ac.ellipse(px, py, 3.4, 2.5, angle, 0, Math.PI * 2); ac.fill();
+        ac.beginPath(); ac.ellipse(px, py, 3.4, 2.5, angle, 0, TAU); ac.fill();
       }
-      ac.beginPath(); ac.arc(x, y + 15, 1.8, 0, Math.PI * 2); ac.fill();
+      ac.beginPath(); ac.arc(x, y + 15, 1.8, 0, TAU); ac.fill();
     }
     ac.globalAlpha = .55;
     for (let x = l + 14; x <= r - 14; x += 16) {
-      ac.beginPath(); ac.arc(x, y - 20, 1.3, 0, Math.PI * 2); ac.fill();
+      ac.beginPath(); ac.arc(x, y - 20, 1.3, 0, TAU); ac.fill();
     }
   }
   ac.restore();
@@ -343,15 +401,28 @@ function buildCakeArt(){
     ac.strokeStyle = "#d95778";
     ac.fillStyle = "#d95778";
     ac.lineWidth = 2.56;
+    for (let i = 0; i < 6; i++) {
+      const angle = -Math.PI / 2 + i * TAU / 6 + 0.3;
+      const px = x + Math.cos(angle) * 17 * size;
+      const py = y + Math.sin(angle) * 14.5 * size;
+      ac.save();
+      ac.translate(px, py);
+      ac.rotate(angle + Math.PI / 2);
+      ac.beginPath();
+      ac.ellipse(0, 0, 11 * size, 8 * size, 0, 0, TAU);
+      ac.globalAlpha = .04; ac.fill();
+      ac.globalAlpha = .4; ac.stroke();
+      ac.restore();
+    }
     for (let i = 0; i < 5; i++) {
-      const angle = -Math.PI / 2 + i * Math.PI * 2 / 5;
+      const angle = -Math.PI / 2 + i * TAU / 5;
       const px = x + Math.cos(angle) * 12 * size;
       const py = y + Math.sin(angle) * 10 * size;
       ac.save();
       ac.translate(px, py);
       ac.rotate(angle + Math.PI / 2);
       ac.beginPath();
-      ac.ellipse(0, 0, 10 * size, 7.5 * size, 0, 0, Math.PI * 2);
+      ac.ellipse(0, 0, 10 * size, 7.5 * size, 0, 0, TAU);
       ac.globalAlpha = .06; ac.fill();
       ac.globalAlpha = .6; ac.stroke();
       ac.restore();
@@ -402,7 +473,7 @@ function buildCakeArt(){
     ac.globalAlpha = .72;
     for (let i = .18; i < .9; i += .16) {
       const p = curvePoint(i, 2);
-      ac.beginPath(); ac.arc(p.x, p.y, 2.1, 0, Math.PI * 2); ac.fill();
+      ac.beginPath(); ac.arc(p.x, p.y, 2.1, 0, TAU); ac.fill();
     }
     ac.restore();
   }
@@ -470,31 +541,19 @@ function buildCakeArt(){
   ac.fillStyle = "#f08aa0";
   ac.globalAlpha = .5;
   for (let x = 225; x <= 475; x += 22) {
-    ac.beginPath(); ac.arc(x, 541, 1.7, 0, Math.PI * 2); ac.fill();
+    ac.beginPath(); ac.arc(x, 541, 1.7, 0, TAU); ac.fill();
   }
   ac.restore();
 
-  ac.save();
   ac.strokeStyle = "#d95778";
   ac.fillStyle = "#f08aa0";
-  ac.globalAlpha = .62;
   ac.lineWidth = 2.08;
-  for (let x = 282; x <= 418; x += 34) {
-    ac.beginPath();
-    ac.moveTo(x - 13, 378);
-    ac.quadraticCurveTo(x, 390, x + 13, 378);
-    ac.stroke();
-    ac.globalAlpha = .4;
-    ac.beginPath();
-    ac.moveTo(x - 8, 381);
-    ac.quadraticCurveTo(x, 388, x + 8, 381);
-    ac.stroke();
-    ac.globalAlpha = .62;
-    ac.beginPath(); ac.arc(x, 394, 2, 0, Math.PI * 2); ac.fill();
-  }
+  sprinkleRow(ac, 282, 418, 34, 378, { curveW: 13, curveH: 12, dotY: 16, dotR: 2, alpha: .62 });
+  ac.save();
   ac.globalAlpha = .5;
+  ac.fillStyle = "#f08aa0";
   for (let x = 285; x <= 415; x += 26) {
-    ac.beginPath(); ac.arc(x, 358, 1.5, 0, Math.PI * 2); ac.fill();
+    ac.beginPath(); ac.arc(x, 358, 1.5, 0, TAU); ac.fill();
   }
   ac.restore();
 
@@ -508,24 +567,21 @@ function buildCakeArt(){
     towerGrad.addColorStop(1, "rgba(217,87,120,0.135)");
     ac.fillStyle = towerGrad; ac.fillRect(278,245,144,105); ac.fillStyle = "#d95778";
   }
-  ac.lineWidth=1.92; cEllipse(ac,350,245,75,18); cEllipse(ac,350,350,75,17);
-  cLine(ac,[[265,230],[350,210],[435,230]],1.2); cEllipse(ac,350,229,88,20);
-  [285,315,385,415].forEach(x=>{ cLine(ac,[[x,245],[x,348]],.6); cEllipse(ac,x,245,9,7); cEllipse(ac,x,348,9,7); });
+  ac.strokeStyle = "#c94368";
+  ac.globalAlpha = .95;
+  ac.lineWidth=2.6; cEllipse(ac,350,245,75,18); cEllipse(ac,350,350,75,17);
+  cLine(ac,[[265,230],[350,210],[435,230]],1.8); cEllipse(ac,350,229,88,20);
+  [285,315,385,415].forEach(x=>{ cLine(ac,[[x,245],[x,348]],1.2); cEllipse(ac,x,245,9,7); cEllipse(ac,x,348,9,7); });
   ac.save();
+  ac.fillStyle = "#d95778"; ac.globalAlpha = .45;
+  pearlTrim(ac, 283, 258, 340, 16, 1.1, .6);
+  pearlTrim(ac, 417, 258, 340, 16, 1.1, .6);
+  ac.restore();
   ac.strokeStyle = "#d95778";
   ac.fillStyle = "#f08aa0";
-  ac.globalAlpha = .6;
   ac.lineWidth = 2.08;
-  for (let x = 298; x <= 402; x += 26) {
-    ac.beginPath();
-    ac.moveTo(x - 9, 280);
-    ac.quadraticCurveTo(x, 292, x + 9, 280);
-    ac.stroke();
-    ac.beginPath(); ac.arc(x, 296, 2.2, 0, Math.PI * 2); ac.fill();
-  }
-  ac.restore();
+  sprinkleRow(ac, 298, 402, 26, 280, { curveW: 9, curveH: 12, dotY: 16, dotR: 2.2, alpha: .6 });
 
-  // ngọn lửa hình trái tim nhỏ trên đỉnh tháp
   ac.save();
   ac.beginPath();
   ac.moveTo(350, 174);
@@ -537,16 +593,22 @@ function buildCakeArt(){
   ac.fill();
   ac.restore();
 
-  ac.lineWidth=1.6; cEllipse(ac,350,850,270,33); cEllipse(ac,350,866,285,28);
+  ac.strokeStyle = "#c94368";
+  ac.globalAlpha = .95;
+  ac.lineWidth=2.5; cEllipse(ac,350,850,270,33); cEllipse(ac,350,866,285,28);
+  ac.save();
+  ac.globalAlpha = .5; ac.lineWidth = 1.3;
+  cEllipse(ac,350,858,277,30);
+  ac.restore();
   ac.save();
   ac.fillStyle = "#f08aa0";
   ac.globalAlpha = .55;
   for (let x = 80; x <= 620; x += 20) {
-    ac.beginPath(); ac.arc(x, 879, 1.6, 0, Math.PI * 2); ac.fill();
+    ac.beginPath(); ac.arc(x, 879, 1.6, 0, TAU); ac.fill();
   }
   ac.globalAlpha = .4;
   for (let x = 95; x <= 605; x += 20) {
-    ac.beginPath(); ac.arc(x, 887, 1.2, 0, Math.PI * 2); ac.fill();
+    ac.beginPath(); ac.arc(x, 887, 1.2, 0, TAU); ac.fill();
   }
   ac.restore();
   ac.save();
@@ -561,39 +623,17 @@ function buildCakeArt(){
     ac.lineTo(350 + Math.cos(a2) * 9, 199 + Math.sin(a2) * 9);
     ac.stroke();
   }
-  ac.beginPath(); ac.arc(350, 199, 2.4, 0, Math.PI * 2); ac.fill();
+  ac.beginPath(); ac.arc(350, 199, 2.4, 0, TAU); ac.fill();
   ac.restore();
 }
 buildCakeArt();
 
 const ART_HALF = 350;
-const ART_CY = 324; // = 900*0.72/2
+const ART_CY = 324;
 
-// chuyển hsl (độ, phần trăm 0-100) sang rgb — dùng để pha màu mượt khi hạt đang rơi
-function hslToRgb(h, sPercent, lPercent){
-  const s = sPercent/100, l = lPercent/100;
-  h = h/360;
-  let r, g, b;
-  if(s === 0){ r = g = b = l; }
-  else{
-    const hue2rgb = (p,q,t)=>{
-      if(t<0) t+=1; if(t>1) t-=1;
-      if(t<1/6) return p+(q-p)*6*t;
-      if(t<1/2) return q;
-      if(t<2/3) return p+(q-p)*(2/3-t)*6;
-      return p;
-    };
-    const q = l<0.5 ? l*(1+s) : l+s-l*s;
-    const p = 2*l-q;
-    r = hue2rgb(p,q,h+1/3); g = hue2rgb(p,q,h); b = hue2rgb(p,q,h-1/3);
-  }
-  return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
-}
-
-// các khung tầng bánh (đúng toạ độ trong buildCakeArt) — dùng để tô đậm thêm gần rìa mỗi tầng
 const TIER_BOXES = [[115,690,585,835],[155,555,545,690],[205,435,495,555],[250,325,450,435]];
 function edgeDarkenFactor(x, y){
-  let factor = 0; // 0 = không đậm thêm, 1 = đậm tối đa (sát rìa)
+  let factor = 0;
   for(const [l,t,r,b] of TIER_BOXES){
     if(x >= l-6 && x <= r+6 && y >= t-6 && y <= b+6){
       const minDist = Math.min(x-l, r-x, y-t, b-y);
@@ -604,48 +644,49 @@ function edgeDarkenFactor(x, y){
   return factor;
 }
 
-function makeCakeTargetParticle(x, y, alphaVal){
+function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
   const flame = y >= 118 && y <= 174 && x >= 343 && x <= 360;
-  const baseO = 0.72 + Math.random()*0.2 + (alphaVal/255)*0.08;
-
-  // Vùng càng dày hạt càng sáng, tạo cảm giác bánh phát sáng từ bên trong.
-  // Vẫn giữ một chút pha màu đậm ở sát viền để chi tiết không bị phẳng.
   const density = alphaVal / 255;
-  let mixT = 0.08 + (1 - density) * 0.5;
-  // tô đậm rất nhẹ gần rìa mỗi tầng nhưng không làm vùng dày bị tối
-  mixT = Math.min(0.72, mixT + edgeDarkenFactor(x, y) * 0.16);
+  const baseO = 0.55 + Math.random()*0.15 + density*0.25;
 
-  const rgb = [
+  let mixT = (1 - density) * 0.85;
+  mixT = Math.min(0.98, mixT + edgeDarkenFactor(x, y) * 0.4);
+
+  const isIcing = sourceR > 245 && sourceG > 175 && sourceB > 190;
+  const rgb = isIcing ? [255, 218, 230] : [
     Math.round(HEART_CENTER_RGB[0] + (HEART_EDGE_RGB[0]-HEART_CENTER_RGB[0])*mixT),
     Math.round(HEART_CENTER_RGB[1] + (HEART_EDGE_RGB[1]-HEART_CENTER_RGB[1])*mixT),
     Math.round(HEART_CENTER_RGB[2] + (HEART_EDGE_RGB[2]-HEART_CENTER_RGB[2])*mixT)
   ];
-  const color = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${Math.min(0.95, baseO)})`;
+  const color = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${Math.min(0.97, baseO)})`;
 
   return {
     nx: (x - ART_HALF) / ART_HALF,
     ny: (y*0.72 - ART_CY) / ART_HALF,
-          r: (0.48 + Math.random()*0.62 + (alphaVal/255)*0.34) / ART_HALF,
+    r: (0.65 + Math.random()*0.6 + density*0.35) / ART_HALF,
     baseO,
     color,
     rgb,
     flame,
-    phase: Math.random()*Math.PI*2,
+    phase: Math.random()*TAU,
     drift: Math.random()*1.3,
-    wobble: Math.random()*Math.PI*2
+    wobble: Math.random()*TAU
   };
 }
 
-const CAKE_MAX = 16000; // giới hạn hạt bánh
+const CAKE_MAX = 16000;
 const cakeTargets = [];
 function generateCakeTargets(){
   cakeTargets.length = 0;
   const data = ac.getImageData(0,0,700,900).data;
   const bodyCeiling = 0.12;
-  // Lấy mẫu theo bước 2 giúp giảm thời gian khởi tạo mà vẫn giữ rõ hình bánh.
   for(let y=0; y<900; y += 2){
     for(let x=0; x<700; x += 2){
-      const aVal = data[(y*700+x)*4+3];
+      const pixelIndex = (y*700+x)*4;
+      const sourceR = data[pixelIndex];
+      const sourceG = data[pixelIndex+1];
+      const sourceB = data[pixelIndex+2];
+      const aVal = data[pixelIndex+3];
       if(!aVal) continue;
       const t = aVal/255;
       let density;
@@ -655,22 +696,19 @@ function generateCakeTargets(){
         const u = (t - bodyCeiling)/(1 - bodyCeiling);
         density = 0.4 + Math.pow(u, 0.35) * 0.6;
       }
-      // Tăng mật độ ở vùng nét và sát rìa để bánh đầy, rõ hơn.
       density = density + edgeDarkenFactor(x, y) * 0.78;
       density = Math.min(1, density);
-      if(Math.random() < density) cakeTargets.push(makeCakeTargetParticle(x,y,aVal));
+      if(Math.random() < density) cakeTargets.push(makeCakeTargetParticle(x,y,aVal,sourceR,sourceG,sourceB));
     }
   }
-  // đảm bảo luôn đủ để ghép với toàn bộ hạt tim
   while(cakeTargets.length < COUNT && cakeTargets.length > 0){
     const src = cakeTargets[Math.floor(Math.random()*cakeTargets.length)];
     cakeTargets.push(Object.assign({}, src, {
       nx: src.nx + (Math.random()-0.5)*0.01,
       ny: src.ny + (Math.random()-0.5)*0.01,
-      phase: Math.random()*Math.PI*2
+      phase: Math.random()*TAU
     }));
   }
-  // phần dư ra (nếu có) sẽ trở thành hạt phụ, chỉ xuất hiện khi rơi để bù chỗ thiếu — giới hạn ở mức an toàn
   if(cakeTargets.length > CAKE_MAX){
     for(let i = cakeTargets.length - 1; i > 0; i--){
       const j = Math.floor(Math.random() * (i + 1));
@@ -681,12 +719,10 @@ function generateCakeTargets(){
 }
 generateCakeTargets();
 
-// ghép mỗi hạt tim với đúng 1 điểm đích trên bánh
 for(let i = 0; i < COUNT; i++){
   particles[i].target = cakeTargets[i];
 }
 
-// số hạt dư ra (nếu có) sẽ là hạt phụ, chỉ xuất hiện khi bắt đầu rơi để bánh đầy đặn hơn
 const extraParticles = [];
 for(let i = COUNT; i < cakeTargets.length; i++){
   const sp = sampleHeartPoint();
@@ -694,20 +730,28 @@ for(let i = COUNT; i < cakeTargets.length; i++){
     startNx: sp.nx,
     startNy: sp.ny,
     target: cakeTargets[i],
-    r: 0.015 + sp.k * 0.045, // kích thước cố định giống hạt tim, không phụ thuộc kích thước bánh
+    r: 0.015 + sp.k * 0.045,
     rgb: heartColorAt(sp.k),
-    phase: Math.random() * Math.PI * 2,
+    phase: Math.random() * TAU,
     speed: 0.006 + Math.random() * 0.01
   });
 }
 
 const CAKE_MIN_Y = -0.93, CAKE_MAX_Y = 0.93;
-const FALL_OVERLAP = 0.3;
+const FALL_OVERLAP = 0.2;
 
-// tính độ "đã rơi" (0..1) của một hạt dựa trên vị trí đích của nó trên bánh (đáy rơi trước)
-function fallProgressFor(targetNy, cakeBuildValue){
+function fallProgressFor(targetNy, targetNx, cakeBuildValue){
   const tPos = (CAKE_MAX_Y - targetNy) / (CAKE_MAX_Y - CAKE_MIN_Y);
-  const threshold = tPos * (1 - FALL_OVERLAP);
+  const horizontalSweep = ((targetNx + 1) / 2) * 0.085;
+  // Stagger nearby particles so the build front does not read as a hard horizontal line.
+  const variation = (
+    Math.sin(targetNx * 47 + targetNy * 31) +
+    Math.sin(targetNx * 83 - targetNy * 59)
+  ) * 0.022;
+  const threshold = Math.max(0, Math.min(
+    1 - FALL_OVERLAP,
+    tPos * (1 - FALL_OVERLAP) + horizontalSweep + variation
+  ));
   let local = (cakeBuildValue - threshold) / FALL_OVERLAP;
   if(local <= 0) return 0;
   if(local >= 1) return 1;
@@ -715,23 +759,20 @@ function fallProgressFor(targetNy, cakeBuildValue){
 }
 
 let cakeBuild = 0;
-const cakeBuildSpeed = 0.0011; // ~15 giây để bánh hiện hoàn chỉnh (lâu thêm 5 giây)
+const cakeBuildSpeed = 0.0011;
 let cakeBuilding = false;
 
-// Giữ trái tim hoàn chỉnh lâu hơn trước khi các hạt bắt đầu tách ra
 setTimeout(() => {
   cakeBuilding = true;
 }, 15000);
 
-/* ===== HIỆU ỨNG XUẤT HIỆN ===== */
 let build = 0;
-const buildSpeed = 0.009; // chỉnh tốc độ ở đây
+const buildSpeed = 0.009;
 let building = true;
 
 let textOpacity = 0;
-const textFadeSpeed = 0.012; // tốc độ hiện chữ
+const textFadeSpeed = 0.012;
 
-// Pháo hoa nhỏ xuất hiện một lần khi dòng chữ bắt đầu hiện
 const fireworks = [];
 const rockets = [];
 let fireworksStarted = false;
@@ -753,31 +794,28 @@ function fireworkParticle(x, y, angle, speed, hue, shape){
 
 function burstFirework(x, y, hue){
   const shape = Math.floor(Math.random() * 3);
-  const count = 24 + Math.floor(Math.random() * 9);
+  const count = 34 + Math.floor(Math.random() * 11);
 
   if(shape === 0){
-    // Vòng tròn mềm
     for(let i = 0; i < count; i++){
-      const angle = i * Math.PI * 2 / count;
-      fireworkParticle(x, y, angle, 0.9 + Math.random() * 0.45, hue, "dot");
+      const angle = i * TAU / count;
+      fireworkParticle(x, y, angle, 1.2 + Math.random() * 0.6, hue, "dot");
     }
   } else if(shape === 1){
-    // Hình trái tim
     for(let i = 0; i < count; i++){
-      const t = i * Math.PI * 2 / count;
+      const t = i * TAU / count;
       const hx = 16 * Math.sin(t) ** 3;
       const hy = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
       const angle = Math.atan2(hy, hx);
-      fireworkParticle(x, y, angle, 0.075 * Math.hypot(hx, hy) + 0.35, hue, "dot");
+      fireworkParticle(x, y, angle, 0.095 * Math.hypot(hx, hy) + 0.45, hue, "dot");
     }
   } else {
-    // Ngôi sao nhiều cánh
     const points = 5;
     for(let i = 0; i < points * 2; i++){
       const angle = -Math.PI / 2 + i * Math.PI / points;
-      const length = i % 2 === 0 ? 1.45 : 0.7;
+      const length = i % 2 === 0 ? 1.75 : 0.85;
       for(let j = 0; j < 4; j++){
-        fireworkParticle(x, y, angle, length * (0.35 + j * 0.16), hue, "dot");
+        fireworkParticle(x, y, angle, length * (0.4 + j * 0.18), hue, "dot");
       }
     }
   }
@@ -808,7 +846,6 @@ function drawFireworks(){
     r.trail.push({x: r.x, y: r.y});
     if(r.trail.length > 10) r.trail.shift();
 
-    // Bay theo cung cong nhẹ, giữ pháo hoa ở hai bên khu vực trung tâm.
     r.y -= r.speed;
     r.progress = Math.max(0, Math.min(1, (h + 18 - r.y) / (h + 18 - r.targetY)));
     r.x = r.startX + Math.sin(r.progress * Math.PI) * r.curve;
@@ -817,7 +854,7 @@ function drawFireworks(){
       ctx.globalAlpha = (j / r.trail.length) * 0.35;
       ctx.fillStyle = `hsl(${r.hue}, 78%, 78%)`;
       ctx.beginPath();
-      ctx.arc(r.trail[j].x, r.trail[j].y, 1.2, 0, Math.PI * 2);
+      ctx.arc(r.trail[j].x, r.trail[j].y, 1.2, 0, TAU);
       ctx.fill();
     }
 
@@ -826,8 +863,9 @@ function drawFireworks(){
     ctx.shadowColor = ctx.fillStyle;
     ctx.shadowBlur = 7;
     ctx.beginPath();
-    ctx.arc(r.x, r.y, 1.8, 0, Math.PI * 2);
+    ctx.arc(r.x, r.y, 1.8, 0, TAU);
     ctx.fill();
+    ctx.shadowBlur = 0;
 
     if(r.y <= r.targetY){
       burstFirework(r.x, r.y, r.hue);
@@ -851,51 +889,33 @@ function drawFireworks(){
 
     ctx.globalAlpha = p.life * 0.8;
     ctx.fillStyle = p.color;
-    // Bỏ shadow cho từng hạt; canvas shadowBlur rất tốn tài nguyên.
-    ctx.shadowBlur = 0;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, p.size, 0, TAU);
     ctx.fill();
   }
   ctx.restore();
 }
 
 function ease(t){
-  return t * t * (3 - 2 * t); // smoothstep
+  return t * t * (3 - 2 * t);
 }
 
 let lastTime = 0;
 
 function draw(now){
   requestAnimationFrame(draw);
-  if(now - lastTime < 20) return; // giới hạn khoảng 50 FPS để giảm tải CPU
+  if(now - lastTime < 20) return;
   lastTime = now;
 
   ctx.clearRect(0,0,w,h);
 
-  /* ===== NỀN TRỜI ĐÊM + SAO LẤP LÁNH ===== */
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-  skyGrad.addColorStop(0, "#050514");
-  skyGrad.addColorStop(0.55, "#0b0a24");
-  skyGrad.addColorStop(1, "#170a20");
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(bgCanvas, 0, 0);
 
-  for(const s of bgStars){
-    ctx.globalAlpha = s.baseO;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-
-  /* ===== CẬP NHẬT XÂY HÌNH ===== */
   if(building){
     build += buildSpeed;
     if(build >= 1){
       build = 1;
-      building = false; // 🔒 tắt hoàn toàn logic xây hình
+      building = false;
     }
   } else if(cakeBuild >= 1 && textOpacity < 1){
     if(!fireworksStarted){
@@ -906,10 +926,8 @@ function draw(now){
     if(textOpacity > 1) textOpacity = 1;
   }
 
-  // Pháo hoa tiếp tục bay lên và nổ xuyên suốt, chỉ xuất hiện ở hai bên bánh.
   if(fireworksStarted && now >= nextFireworkLaunch){
-    // Giữ số tên lửa vừa phải để pháo hoa không xuất hiện dồn dập.
-    if(rockets.length < 4){
+    if(rockets.length < 5){
       const leftSide = fireworkWave % 2 === 0;
       const sideX = leftSide
         ? w * (0.08 + Math.random() * 0.16)
@@ -918,8 +936,7 @@ function draw(now){
       launchFirework(sideX, targetY, 330 + Math.random() * 42, 0);
       fireworkWave++;
     }
-    // Tăng tần suất phóng để pháo hoa xuất hiện thường xuyên hơn.
-    nextFireworkLaunch = now + 500 + Math.random() * 400;
+    nextFireworkLaunch = now + 380 + Math.random() * 320;
   }
 
   if(cakeBuilding && cakeBuild < 1){
@@ -929,34 +946,25 @@ function draw(now){
 
   const a = ease(build);
 
-  /* ===== NHỊP TIM GIỮ NGUYÊN ===== */
   const t = now * 0.0025;
   const beat =
     1 + Math.sin(t) * 0.03 + Math.sin(t*2) * 0.012;
 
   const heartOffsetX = w/2;
-  const heartOffsetY = h/2 - h*0.30; // vị trí tim
-  // Trên điện thoại phóng trái tim lớn gấp 3 lần kích thước máy tính.
-  // Đây là mức gấp đôi so với hệ số 1.5 trước đó.
+  const heartOffsetY = h/2 - h*0.30;
   const scaleAmt = 12.5 * beat * (w <= 600 ? 3 : 1);
 
-  // Dùng kích thước lớn hơn để các hạt và chi tiết bánh hiển thị rõ hơn.
-  // Thu nhỏ nhẹ trên điện thoại để bánh không chiếm hết khung hình.
   const cakeScale = Math.min(w, h) * (w <= 600 ? 0.47 : 0.53);
   const cakeCenterX = w/2;
-  const cakeCenterY = heartOffsetY + h*0.27; // hạ bánh xuống một chút để bố cục thoáng hơn
-  const cakeBreath = 1 + Math.sin(now * 0.0012) * 0.03; // bánh to ra nhỏ vào nhẹ nhàng
-  const flameFit = cakeScale / ART_HALF; // tỉ lệ quy đổi độ lắc của ngọn nến
+  const cakeCenterY = heartOffsetY + h*0.27;
+  const cakeBreath = 1 + Math.sin(now * 0.0012) * 0.03;
+  const flameFit = cakeScale / ART_HALF;
 
-  /* ===== HẠT CỦA TIM / BÁNH ===== */
-  // Đặt chế độ hòa trộn một lần cho cả nhóm thay vì đổi 2 lần ở từng hạt.
   ctx.globalCompositeOperation = "lighter";
   for(const p of particles){
-    const fp = cakeBuilding ? ease(fallProgressFor(p.target.ny, cakeBuild)) : 0;
+    const fp = cakeBuilding ? ease(fallProgressFor(p.target.ny, p.target.nx, cakeBuild)) : 0;
 
     if(fp >= 1){
-      // Các vùng nhiều hạt cộng sáng với nhau, tạo hiệu ứng lấp lánh tự nhiên.
-      // đã hoàn toàn thuộc về bánh — thở nhẹ ngay lập tức cùng cả bánh
       const baseX = cakeCenterX + p.target.nx * cakeScale;
       const baseY = cakeCenterY + p.target.ny * cakeScale;
       let px = cakeCenterX + (baseX - cakeCenterX) * cakeBreath;
@@ -970,20 +978,18 @@ function draw(now){
       const cakeChaosY = Math.cos(now * 0.0021 + p.target.phase) * 0.65;
       ctx.globalAlpha = Math.min(1, p.target.baseO + cakeTwinkle * 0.18);
       ctx.beginPath();
-      ctx.arc(px + cakeChaosX, py + cakeChaosY, p.target.r * cakeScale * (1 + cakeTwinkle * 0.25), 0, Math.PI*2);
+      ctx.arc(px + cakeChaosX, py + cakeChaosY, p.target.r * cakeScale * (1 + cakeTwinkle * 0.25), 0, TAU);
       ctx.fillStyle = p.target.color;
       ctx.fill();
       continue;
     }
 
     p.phase += p.speed;
-          // Lấp lánh nhẹ hơn để trái tim không bị quá sáng.
-    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.004) + 1) * 0.12;
-    const twinkle = Math.max(0, Math.sin(p.phase * 2.3 + now * 0.008));
-    const alpha = Math.min(0.78, (p.baseO * 0.78 + sparkle + twinkle * 0.08) * a);
+    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * 0.12;
+    const twinkle = Math.max(0, Math.sin(p.phase * 1.3 + now * 0.0045));
+    const alpha = Math.min(0.85, (p.baseO * 0.78 + sparkle + twinkle * 0.13) * a);
 
     if(fp <= 0){
-      // Các hạt dao động hỗn loạn nhẹ quanh vị trí gốc, vẫn giữ được hình tim.
       const pulse = (beat - 1) * 0.6;
       const x = p.nx * a;
       const y = p.ny * a;
@@ -991,25 +997,23 @@ function draw(now){
       const dy = y * pulse;
       const chaosX = Math.sin(now * 0.0022 + p.phase * 3.1) * (0.7 + p.r * 8);
       const chaosY = Math.cos(now * 0.0018 + p.phase * 2.4) * (0.7 + p.r * 8);
-      const twinkleSize = 1 + twinkle * 0.55;
+      const twinkleSize = 1 + twinkle * 0.75;
 
-      // Các vùng nhiều hạt chồng lên nhau sẽ cộng sáng tự nhiên.
       ctx.globalAlpha = alpha;
       ctx.beginPath();
       ctx.arc(
         heartOffsetX + (x + dx) * scaleAmt + chaosX,
         heartOffsetY + (y + dy) * scaleAmt + chaosY,
         p.r * scaleAmt * twinkleSize,
-        0, Math.PI * 2
+        0, TAU
       );
       ctx.fillStyle = p.colorStr;
       ctx.fill();
 
-      // Một số hạt lóe sáng thành tia nhỏ, với cường độ dịu hơn.
-      if(twinkle > 0.96){
-        ctx.globalAlpha = (twinkle - 0.96) * 4;
-        ctx.strokeStyle = "rgba(255, 235, 245, 0.65)";
-        ctx.lineWidth = 0.7;
+      if(twinkle > 0.93){
+        ctx.globalAlpha = (twinkle - 0.93) * 4.5;
+        ctx.strokeStyle = "rgba(255, 235, 245, 0.7)";
+        ctx.lineWidth = 0.75;
         ctx.beginPath();
         ctx.moveTo(heartOffsetX + (x + dx) * scaleAmt + chaosX - 3, heartOffsetY + (y + dy) * scaleAmt + chaosY);
         ctx.lineTo(heartOffsetX + (x + dx) * scaleAmt + chaosX + 3, heartOffsetY + (y + dy) * scaleAmt + chaosY);
@@ -1017,34 +1021,52 @@ function draw(now){
         ctx.lineTo(heartOffsetX + (x + dx) * scaleAmt + chaosX, heartOffsetY + (y + dy) * scaleAmt + chaosY + 3);
         ctx.stroke();
       }
+
+      if(p.glint && twinkle > 0.8){
+        const glintT = (twinkle - 0.8) / 0.2;
+        const gx = heartOffsetX + (x + dx) * scaleAmt + chaosX;
+        const gy = heartOffsetY + (y + dy) * scaleAmt + chaosY;
+        const flareLen = 2 + glintT * 6;
+        ctx.globalAlpha = glintT * 0.8;
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(gx, gy, p.r * scaleAmt * (1.1 + glintT * 0.7), 0, TAU);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.8)";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(gx - flareLen, gy); ctx.lineTo(gx + flareLen, gy);
+        ctx.moveTo(gx, gy - flareLen); ctx.lineTo(gx, gy + flareLen);
+        ctx.stroke();
+      }
     } else {
-      // đang rơi khỏi tim, bay dần về đúng vị trí trên bánh — màu pha mượt dần, không bật đột ngột
       const startX = heartOffsetX + p.nx * a * scaleAmt;
       const startY = heartOffsetY + p.ny * a * scaleAmt;
       const endX = cakeCenterX + p.target.nx * cakeScale;
       const endY = cakeCenterY + p.target.ny * cakeScale;
 
-      const curX = startX + (endX - startX) * fp;
-      const curY = startY + (endY - startY) * fp;
-      // Hạt phóng to dần theo kích thước thật của bánh trong lúc rơi.
+      const swirlAngle = fp * TAU * 1.8 + p.phase;
+      const swirlRadius = Math.sin(fp * Math.PI) * cakeScale * 0.03;
+      const arcLift = Math.sin(fp * Math.PI) * cakeScale * 0.05;
+      const curX = startX + (endX - startX) * fp + Math.cos(swirlAngle) * swirlRadius;
+      const curY = startY + (endY - startY) * fp + Math.sin(swirlAngle) * swirlRadius - arcLift;
       const curR = p.r * scaleAmt + (p.target.r * cakeScale - p.r * scaleAmt) * fp;
 
       const tr = Math.round(p.rgb[0] + (p.target.rgb[0]-p.rgb[0])*fp);
       const tg = Math.round(p.rgb[1] + (p.target.rgb[1]-p.rgb[1])*fp);
       const tb = Math.round(p.rgb[2] + (p.target.rgb[2]-p.rgb[2])*fp);
 
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = alpha * (0.2 + 0.8 * ease(fp));
       ctx.beginPath();
-      ctx.arc(curX, curY, curR, 0, Math.PI*2);
+      ctx.arc(curX, curY, curR, 0, TAU);
       ctx.fillStyle = `rgb(${tr},${tg},${tb})`;
       ctx.fill();
     }
   }
 
-  /* ===== HẠT PHỤ — CHỈ XUẤT HIỆN KHI RƠI, GIÚP BÁNH ĐẦY ĐẶN HƠN; CŨNG ĐỨNG YÊN VĨNH VIỄN KHI TỚI NƠI ===== */
   if(cakeBuilding){
     for(const ep of extraParticles){
-      const fp = ease(fallProgressFor(ep.target.ny, cakeBuild));
+      const fp = ease(fallProgressFor(ep.target.ny, ep.target.nx, cakeBuild));
       if(fp <= 0) continue;
 
       if(fp >= 1){
@@ -1058,7 +1080,7 @@ function draw(now){
         }
         ctx.globalAlpha = ep.target.baseO;
         ctx.beginPath();
-        ctx.arc(px, py, ep.target.r * cakeScale, 0, Math.PI*2);
+        ctx.arc(px, py, ep.target.r * cakeScale, 0, TAU);
         ctx.fillStyle = ep.target.color;
         ctx.fill();
         continue;
@@ -1072,9 +1094,11 @@ function draw(now){
       const endX = cakeCenterX + ep.target.nx * cakeScale;
       const endY = cakeCenterY + ep.target.ny * cakeScale;
 
-      const curX = startX + (endX - startX) * fp;
-      const curY = startY + (endY - startY) * fp;
-      // Hạt phụ cũng tăng kích thước mượt theo bánh khi rơi xuống.
+      const swirlAngle = fp * TAU * 1.8 + ep.phase;
+      const swirlRadius = Math.sin(fp * Math.PI) * cakeScale * 0.03;
+      const arcLift = Math.sin(fp * Math.PI) * cakeScale * 0.05;
+      const curX = startX + (endX - startX) * fp + Math.cos(swirlAngle) * swirlRadius;
+      const curY = startY + (endY - startY) * fp + Math.sin(swirlAngle) * swirlRadius - arcLift;
       const curR = ep.r * scaleAmt + (ep.target.r * cakeScale - ep.r * scaleAmt) * fp;
 
       const tr = Math.round(ep.rgb[0] + (ep.target.rgb[0]-ep.rgb[0])*fp);
@@ -1083,7 +1107,7 @@ function draw(now){
 
       ctx.globalAlpha = (ep.target.baseO + sparkle) * fp;
       ctx.beginPath();
-      ctx.arc(curX, curY, curR, 0, Math.PI*2);
+      ctx.arc(curX, curY, curR, 0, TAU);
       ctx.fillStyle = `rgb(${tr},${tg},${tb})`;
       ctx.fill();
     }
@@ -1094,9 +1118,8 @@ function draw(now){
   ctx.globalCompositeOperation = "source-over";
   drawFireworks();
 
-  /* ===== CHỮ HAPPY BIRTHDAY ===== */
   if(textOpacity > 0){
-    const textY = h/2 - h*0.30 - h*0.135; // nâng chữ lên một chút
+    const textY = h/2 - h*0.30 - h*0.135;
 
     ctx.save();
     ctx.globalAlpha = ease(textOpacity);
@@ -1106,7 +1129,6 @@ function draw(now){
     const fontSize = w <= 600
       ? Math.max(18, Math.min(w * 0.058, 30))
       : Math.max(21, Math.min(w * 0.052, 42));
-    // Kiểu chữ mềm mại, thanh lịch và đồng bộ với màu hồng của bánh.
     ctx.font = `italic 500 ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
     ctx.letterSpacing = "0.4px";
 
@@ -1129,15 +1151,8 @@ requestAnimationFrame(draw);
 </script>
 
 <script>
-/* ===================== EMOJI RƠI ===================== */
 const EMOJIS = ["✦", "✧", "✶", "✷", "✹", "❈", "❉", "⋆", "⭒", "❀", "✿", "❁", "❃"];
 
-/*
-  🔧 GHI CHÚ CHO SAU NÀY:
-  Khi có ảnh thật, chỉ cần điền link/base64 ảnh tương ứng vào đây,
-  ví dụ: "⭐": "data:image/png;base64,....." hoặc "⭐": "anh-sao.jpg"
-  Emoji nào không có ảnh trong danh sách này sẽ tự động dùng khung placeholder.
-*/
 const PHOTO_COUNT = 18;
 const WISHES = [
   "Chúc Vân luôn vui vẻ, hạnh phúc và rực rỡ như những vì sao ✨",
@@ -1169,7 +1184,6 @@ const modalClose = document.getElementById("modalClose");
 let photoIndex = 0;
 const imageCache = new Map();
 
-// Tải ảnh ngay khi trang mở để lần bấm sau không phải chờ mạng/đĩa.
 for(let i = 1; i <= PHOTO_COUNT; i++){
   const preloaded = new Image();
   preloaded.src = `anh${i}.jpg`;
@@ -1202,7 +1216,6 @@ function openModal(emoji){
     modalOverlay.classList.remove("loading");
   };
 
-  // Dùng ảnh đã preload nếu có; nếu chưa xong thì chờ đúng ảnh đó tải.
   img.src = cachedImage.src;
   if(cachedImage.complete){
     if(cachedImage.naturalWidth > 0) showImage();
@@ -1227,8 +1240,6 @@ function spawnEmoji(){
   if(isFlower) el.classList.add("falling-flower");
   el.textContent = emoji;
 
-  // Giữ sao ở hai bên, tránh toàn bộ vùng tim và bánh ở trung tâm.
-  // Chừa thêm biên cho hiệu ứng lắc ngang trong lúc rơi.
   const centerX = window.innerWidth / 2;
   const safeHalfWidth = Math.min(window.innerWidth * 0.34, 300);
   const sideGap = 42;
@@ -1244,11 +1255,11 @@ function spawnEmoji(){
 
   const size = isFlower
     ? 16 + Math.random() * 8
-    : (14 + Math.random() * 10) * 2; // tăng kích thước các ngôi sao lên gấp đôi
+    : (14 + Math.random() * 10) * 2;
   const duration = isFlower
     ? 9 + Math.random() * 4
     : 7 + Math.random() * 5;
-  const sway = (Math.random() * 40 - 20); // lắc nhẹ hơn để không trôi vào vùng tim
+  const sway = (Math.random() * 40 - 20);
   const rotateEnd = (Math.random() * 360 - 180);
 
   el.style.left = startX + "px";
@@ -1286,16 +1297,14 @@ function spawnEmoji(){
 }
 
 setTimeout(() => {
-  setInterval(spawnEmoji, 1400); // giảm tần suất xuất hiện
+  setInterval(spawnEmoji, 1400);
 }, 2200);
 
-// Điện thoại thường chặn autoplay nếu chưa có thao tác người dùng.
 const backgroundMusic = document.getElementById("backgroundMusic");
 function startMusic(){
   backgroundMusic.play().catch(() => {});
 }
 
-// Thử autoplay trước; nếu bị chặn, phát ngay ở lần chạm/click đầu tiên.
 setTimeout(startMusic, 2000);
 document.addEventListener("pointerdown", startMusic, { once: true, passive: true });
 document.addEventListener("touchstart", startMusic, { once: true, passive: true });
