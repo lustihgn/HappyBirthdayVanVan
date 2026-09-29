@@ -90,20 +90,59 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
   to   { transform: scale(1); opacity: 1; }
 }
 
-#modalCard img {
+#photoFrame {
+  position: relative;
+  display: inline-flex;
+  max-width: min(84%, 780px);
+  max-height: min(66vh, 760px);
+  padding: 9px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 224, 199, 0.95);
+  border-radius: 22px;
+  background: linear-gradient(135deg, #fff0d6 0%, #eaa1ad 20%, #a64d6a 48%, #f4c4bc 76%, #fff0d6 100%);
+  box-shadow: 0 0 0 3px rgba(255, 183, 200, 0.24), 0 0 0 6px rgba(255, 226, 207, 0.12), 0 14px 38px rgba(255, 90, 150, 0.3);
+}
+#photoFrame::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(255, 242, 224, 0.65);
+  border-radius: 16px;
+  pointer-events: none;
+}
+#photoFrame::after {
+  content: "✦";
+  position: absolute;
+  top: -13px;
+  right: -11px;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  color: #fff2d8;
+  font-size: 15px;
+  border: 1px solid rgba(255, 230, 205, 0.9);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #e995ad, #9d3d5c);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+#photoFrame img {
   display: block;
+  box-sizing: border-box;
   max-width: 100%;
-  max-height: min(82vh, 1040px);
-  border-radius: 12px;
+  max-height: min(calc(66vh - 20px), 740px);
+  border: 1px solid rgba(255, 248, 242, 0.9);
+  border-radius: 14px;
   object-fit: cover;
+  box-shadow: 0 3px 12px rgba(55, 5, 25, 0.28);
 }
 
 #modalCaption {
-  margin-top: 16px;
-  font-size: 22px;
+  margin-top: 14px;
+  font-size: 20px;
   opacity: 0.9;
-  line-height: 1.5;
-  max-width: 92%;
+  line-height: 1.45;
+  max-width: 88%;
 }
 
 #modalNumber {
@@ -138,17 +177,24 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
     padding: 34px 4px 18px;
   }
 
-  #modalCard img {
+  #photoFrame {
+    max-width: 84vw;
+    max-height: 62vh;
+    padding: 7px;
+    border-radius: 18px;
+  }
+
+  #photoFrame img {
     max-width: 100%;
-    max-height: 84vh;
-    border-radius: 8px;
+    max-height: calc(62vh - 14px);
+    border-radius: 11px;
   }
 
   #modalCaption {
-    margin-top: 12px;
-    font-size: 20px;
-    line-height: 1.45;
-    max-width: 94%;
+    margin-top: 10px;
+    font-size: 18px;
+    line-height: 1.4;
+    max-width: 90%;
   }
 
   .falling-emoji {
@@ -952,7 +998,8 @@ function draw(now){
 
   const heartOffsetX = w/2;
   const heartOffsetY = h/2 - h*0.30;
-  const scaleAmt = 12.5 * beat * (w <= 600 ? 3 : 1);
+  // Scale the heart to the viewport so it stays within the screen on phones and desktops.
+  const scaleAmt = Math.min(w * 0.024, h * 0.018) * beat;
 
   const cakeScale = Math.min(w, h) * (w <= 600 ? 0.47 : 0.53);
   const cakeCenterX = w/2;
@@ -1195,14 +1242,17 @@ function openModal(emoji){
   const cachedImage = imageCache.get(imageNumber);
   const img = document.createElement("img");
   img.alt = `Ảnh kỷ niệm ${imageNumber}`;
+  const photoFrame = document.createElement("div");
+  photoFrame.id = "photoFrame";
+  photoFrame.appendChild(img);
 
   modalOverlay.classList.add("show", "loading");
-  modalCard.querySelectorAll("img").forEach(oldImg => oldImg.remove());
+  modalCard.querySelectorAll("#photoFrame").forEach(frame => frame.remove());
   modalEmoji.style.display = "none";
   modalCaption.style.display = "block";
   modalCaption.textContent = WISHES[imageNumber - 1];
   modalNumber.textContent = `Ảnh ${imageNumber}/${PHOTO_COUNT}`;
-  modalCard.insertBefore(img, modalCaption);
+  modalCard.insertBefore(photoFrame, modalCaption);
 
   const showImage = () => {
     modalOverlay.classList.remove("loading");
@@ -1210,7 +1260,7 @@ function openModal(emoji){
 
   img.onload = showImage;
   img.onerror = () => {
-    img.remove();
+    photoFrame.remove();
     modalEmoji.style.display = "block";
     modalEmoji.textContent = emoji;
     modalOverlay.classList.remove("loading");
@@ -1253,9 +1303,10 @@ function spawnEmoji(){
     startX = rightMin + Math.random() * Math.max(20, (window.innerWidth - 40 - rightMin));
   }
 
-  const size = isFlower
+  const mobileScale = window.innerWidth <= 600 ? 1.44 : 1;
+  const size = (isFlower
     ? 16 + Math.random() * 8
-    : (14 + Math.random() * 10) * 2;
+    : (14 + Math.random() * 10) * 2) * mobileScale;
   const duration = isFlower
     ? 9 + Math.random() * 4
     : 7 + Math.random() * 5;
