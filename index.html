@@ -288,6 +288,19 @@ function sampleHeartPoint(){
   }
 }
 
+const outerSparkles = Array.from({length: 90}, () => {
+  const angle = Math.random() * TAU;
+  const edge = heart(angle);
+  const distance = 1.08 + Math.random() * 0.28;
+  return {
+    nx: edge.x * distance,
+    ny: edge.y * distance,
+    size: 0.7 + Math.random() * 1.4,
+    phase: Math.random() * TAU,
+    speed: 0.7 + Math.random() * 1.3
+  };
+});
+
 function generate(){
   particles.length = 0;
   while(particles.length < COUNT){
@@ -301,9 +314,10 @@ function generate(){
       baseO,
       rgb,
       colorStr: `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`,
+      edge: sp.k,
       phase: Math.random() * TAU,
       speed: 0.006 + Math.random() * 0.01,
-      glint: Math.random() < 0.006,
+      glint: Math.random() < (0.002 + sp.k * 0.018),
       target: null
     });
   }
@@ -784,7 +798,7 @@ for(let i = COUNT; i < cakeTargets.length; i++){
 }
 
 const CAKE_MIN_Y = -0.93, CAKE_MAX_Y = 0.93;
-const FALL_OVERLAP = 0.2;
+const FALL_OVERLAP = 0.34;
 
 function fallProgressFor(targetNy, targetNx, cakeBuildValue){
   const tPos = (CAKE_MAX_Y - targetNy) / (CAKE_MAX_Y - CAKE_MIN_Y);
@@ -1032,8 +1046,9 @@ function draw(now){
     }
 
     p.phase += p.speed;
-    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * 0.12;
-    const twinkle = Math.max(0, Math.sin(p.phase * 1.3 + now * 0.0045));
+    const edgeGlow = 0.52 + p.edge * 0.48;
+    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * (0.09 + p.edge * 0.14);
+    const twinkle = Math.max(0, Math.sin(p.phase * 1.3 + now * 0.0045)) * edgeGlow;
     const alpha = Math.min(0.85, (p.baseO * 0.78 + sparkle + twinkle * 0.13) * a);
 
     if(fp <= 0){
@@ -1057,9 +1072,9 @@ function draw(now){
       ctx.fillStyle = p.colorStr;
       ctx.fill();
 
-      if(twinkle > 0.93){
-        ctx.globalAlpha = (twinkle - 0.93) * 4.5;
-        ctx.strokeStyle = "rgba(255, 235, 245, 0.7)";
+      if(twinkle > 0.72){
+        ctx.globalAlpha = (twinkle - 0.72) * 2.6;
+        ctx.strokeStyle = "rgba(255, 170, 200, 0.42)";
         ctx.lineWidth = 0.75;
         ctx.beginPath();
         ctx.moveTo(heartOffsetX + (x + dx) * scaleAmt + chaosX - 3, heartOffsetY + (y + dy) * scaleAmt + chaosY);
@@ -1074,12 +1089,12 @@ function draw(now){
         const gx = heartOffsetX + (x + dx) * scaleAmt + chaosX;
         const gy = heartOffsetY + (y + dy) * scaleAmt + chaosY;
         const flareLen = 2 + glintT * 6;
-        ctx.globalAlpha = glintT * 0.8;
-        ctx.fillStyle = "#ffffff";
+        ctx.globalAlpha = glintT * 0.55;
+        ctx.fillStyle = "#ffd0dc";
         ctx.beginPath();
         ctx.arc(gx, gy, p.r * scaleAmt * (1.1 + glintT * 0.7), 0, TAU);
         ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.8)";
+        ctx.strokeStyle = "rgba(255,190,215,0.55)";
         ctx.lineWidth = 0.8;
         ctx.beginPath();
         ctx.moveTo(gx - flareLen, gy); ctx.lineTo(gx + flareLen, gy);
@@ -1093,11 +1108,14 @@ function draw(now){
       const endY = cakeCenterY + p.target.ny * cakeScale;
 
       const swirlAngle = fp * TAU * 1.8 + p.phase;
-      const swirlRadius = Math.sin(fp * Math.PI) * cakeScale * 0.03;
-      const arcLift = Math.sin(fp * Math.PI) * cakeScale * 0.05;
+      const swirlRadius = Math.sin(fp * Math.PI) * cakeScale * 0.04;
+      const arcLift = Math.sin(fp * Math.PI) * cakeScale * 0.035;
       const curX = startX + (endX - startX) * fp + Math.cos(swirlAngle) * swirlRadius;
       const curY = startY + (endY - startY) * fp + Math.sin(swirlAngle) * swirlRadius - arcLift;
-      const curR = p.r * scaleAmt + (p.target.r * cakeScale - p.r * scaleAmt) * fp;
+      const curR = Math.max(
+        p.r * scaleAmt + (p.target.r * cakeScale - p.r * scaleAmt) * fp,
+        1.1 + Math.sin(fp * Math.PI) * 0.35
+      );
 
       const tr = Math.round(p.rgb[0] + (p.target.rgb[0]-p.rgb[0])*fp);
       const tg = Math.round(p.rgb[1] + (p.target.rgb[1]-p.rgb[1])*fp);
@@ -1142,11 +1160,14 @@ function draw(now){
       const endY = cakeCenterY + ep.target.ny * cakeScale;
 
       const swirlAngle = fp * TAU * 1.8 + ep.phase;
-      const swirlRadius = Math.sin(fp * Math.PI) * cakeScale * 0.03;
-      const arcLift = Math.sin(fp * Math.PI) * cakeScale * 0.05;
+      const swirlRadius = Math.sin(fp * Math.PI) * cakeScale * 0.04;
+      const arcLift = Math.sin(fp * Math.PI) * cakeScale * 0.035;
       const curX = startX + (endX - startX) * fp + Math.cos(swirlAngle) * swirlRadius;
       const curY = startY + (endY - startY) * fp + Math.sin(swirlAngle) * swirlRadius - arcLift;
-      const curR = ep.r * scaleAmt + (ep.target.r * cakeScale - ep.r * scaleAmt) * fp;
+      const curR = Math.max(
+        ep.r * scaleAmt + (ep.target.r * cakeScale - ep.r * scaleAmt) * fp,
+        1.1 + Math.sin(fp * Math.PI) * 0.35
+      );
 
       const tr = Math.round(ep.rgb[0] + (ep.target.rgb[0]-ep.rgb[0])*fp);
       const tg = Math.round(ep.rgb[1] + (ep.target.rgb[1]-ep.rgb[1])*fp);
