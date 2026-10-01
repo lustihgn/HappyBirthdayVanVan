@@ -11,13 +11,12 @@ html, body {
   background: #0b0a24;
   overflow: hidden;
 }
-canvas { display: block; }
+canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0 12px rgba(255,90,150,0.28)); }
 
 /* ===== EMOJI RƠI ===== */
 .falling-emoji {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: -60px;
   padding: 50px;
   margin: -50px;
   font-size: 34px;
@@ -25,8 +24,14 @@ canvas { display: block; }
   user-select: none;
   z-index: 5;
   color: #ffffff;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,0.55));
   text-shadow: 0 0 3px rgba(255,255,255,0.8), 0 0 7px rgba(255,255,255,0.35);
-  will-change: transform;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  will-change: transform, top;
+}
+.falling-emoji:hover {
+  transform: scale(1.35) rotate(12deg);
+  filter: drop-shadow(0 0 5px rgba(255,255,255,0.75));
 }
 .falling-flower {
   color: #ffd9e6;
@@ -37,7 +42,8 @@ canvas { display: block; }
 #modalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.88);
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
   display: none;
   align-items: center;
   justify-content: center;
@@ -77,7 +83,6 @@ canvas { display: block; }
   text-align: center;
   padding: 24px;
   box-sizing: border-box;
-  overflow-y: auto;
   animation: popIn 0.3s ease;
 }
 
@@ -89,7 +94,7 @@ canvas { display: block; }
 #photoFrame {
   position: relative;
   display: flex;
-  width: min(84%, 620px);
+  width: min(92%, 720px);
   max-height: min(68vh, 800px);
   padding: 10px;
   box-sizing: border-box;
@@ -99,12 +104,7 @@ canvas { display: block; }
   box-shadow: 0 0 0 3px rgba(255, 183, 200, 0.24), 0 0 0 6px rgba(255, 226, 207, 0.12), 0 14px 38px rgba(255, 90, 150, 0.3);
 }
 #photoFrame::before {
-  content: "";
-  position: absolute;
-  inset: 4px;
-  border: 1px solid rgba(255, 242, 224, 0.65);
-  border-radius: 16px;
-  pointer-events: none;
+  display: none;
 }
 #photoFrame::after {
   content: "✦";
@@ -126,12 +126,12 @@ canvas { display: block; }
   display: block;
   box-sizing: border-box;
   width: 100%;
-  height: min(calc(56vh - 20px), 620px);
-  background: #1a0710;
-  border: 1px solid rgba(255, 248, 242, 0.9);
+  height: auto;
+  max-height: min(calc(68vh - 20px), 780px);
+  border: 0;
   border-radius: 14px;
-  object-fit: contain;
-  box-shadow: 0 3px 12px rgba(55, 5, 25, 0.28);
+  object-fit: cover;
+  box-shadow: none;
 }
 
 #modalCaption {
@@ -179,8 +179,8 @@ canvas { display: block; }
 }
 
 #modalClose {
-  position: absolute;
   display: none;
+  position: absolute;
   top: 10px;
   right: 14px;
   font-size: 26px;
@@ -201,15 +201,15 @@ canvas { display: block; }
   }
 
   #photoFrame {
-    width: 84vw;
-    max-height: 58vh;
+    width: 75vw;
+    max-height: 75vh;
     padding: 7px;
     border-radius: 18px;
   }
 
   #photoFrame img {
     max-width: 100%;
-    height: calc(50vh - 14px);
+    max-height: calc(75vh - 14px);
     border-radius: 11px;
   }
 
@@ -279,8 +279,7 @@ function resize(){
 window.addEventListener("resize", resize);
 resize();
 
-const SMALL = Math.min(window.innerWidth, window.innerHeight) <= 700;
-const COUNT = SMALL ? 8000 : 12000;
+const COUNT = 14000;
 const particles = [];
 
 const HEART_CENTER_RGB = [255, 205, 220];
@@ -312,6 +311,7 @@ function sampleHeartPoint(){
     return { nx: p.x * k, ny: p.y * k, k };
   }
 }
+
 function generate(){
   particles.length = 0;
   while(particles.length < COUNT){
@@ -328,18 +328,12 @@ function generate(){
       edge: sp.k,
       phase: Math.random() * TAU,
       speed: 0.006 + Math.random() * 0.01,
-      glint: Math.random() < (0.004 + sp.k * 0.03),
+      glint: Math.random() < (0.002 + sp.k * 0.018),
       target: null
     });
   }
 }
 generate();
-
-const sparkleList = [];
-while(sparkleList.length < 36){
-  const sp = particles[Math.floor(Math.random() * COUNT)];
-  if(sp.edge > 0.4) sparkleList.push({ p: sp, ph: Math.random() * TAU, sp: 0.002 + Math.random() * 0.003 });
-}
 
 const artCanvas = document.createElement("canvas");
 artCanvas.width = 700; artCanvas.height = 900;
@@ -742,7 +736,6 @@ function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
     r: (0.65 + Math.random()*0.6 + density*0.35) / ART_HALF,
     baseO,
     color,
-    colorStr: `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`,
     rgb,
     flame,
     phase: Math.random()*TAU,
@@ -751,7 +744,7 @@ function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
   };
 }
 
-const CAKE_MAX = SMALL ? 10000 : 14000;
+const CAKE_MAX = 16000;
 const cakeTargets = [];
 function generateCakeTargets(){
   cakeTargets.length = 0;
@@ -809,7 +802,6 @@ for(let i = COUNT; i < cakeTargets.length; i++){
     target: cakeTargets[i],
     r: 0.015 + sp.k * 0.045,
     rgb: heartColorAt(sp.k),
-    colorStr: `rgb(${heartColorAt(sp.k).join(",")})`,
     phase: Math.random() * TAU,
     speed: 0.006 + Math.random() * 0.01
   });
@@ -818,17 +810,22 @@ for(let i = COUNT; i < cakeTargets.length; i++){
 const CAKE_MIN_Y = -0.93, CAKE_MAX_Y = 0.93;
 const FALL_OVERLAP = 0.34;
 
-function fallProgressT(tg, cb){
-  let thr = tg.thr;
-  if(thr === undefined){
-    const tPos = (CAKE_MAX_Y - tg.ny) / (CAKE_MAX_Y - CAKE_MIN_Y);
-    const hs = ((tg.nx + 1) / 2) * 0.085;
-    const v = (Math.sin(tg.nx * 47 + tg.ny * 31) + Math.sin(tg.nx * 83 - tg.ny * 59)) * 0.022;
-    thr = Math.max(0, Math.min(1 - FALL_OVERLAP, tPos * (1 - FALL_OVERLAP) + hs + v));
-    tg.thr = thr;
-  }
-  const local = (cb - thr) / FALL_OVERLAP;
-  return local <= 0 ? 0 : local >= 1 ? 1 : local;
+function fallProgressFor(targetNy, targetNx, cakeBuildValue){
+  const tPos = (CAKE_MAX_Y - targetNy) / (CAKE_MAX_Y - CAKE_MIN_Y);
+  const horizontalSweep = ((targetNx + 1) / 2) * 0.085;
+  // Stagger nearby particles so the build front does not read as a hard horizontal line.
+  const variation = (
+    Math.sin(targetNx * 47 + targetNy * 31) +
+    Math.sin(targetNx * 83 - targetNy * 59)
+  ) * 0.022;
+  const threshold = Math.max(0, Math.min(
+    1 - FALL_OVERLAP,
+    tPos * (1 - FALL_OVERLAP) + horizontalSweep + variation
+  ));
+  let local = (cakeBuildValue - threshold) / FALL_OVERLAP;
+  if(local <= 0) return 0;
+  if(local >= 1) return 1;
+  return local;
 }
 
 let cakeBuild = 0;
@@ -979,7 +976,6 @@ let lastTime = 0;
 function draw(now){
   requestAnimationFrame(draw);
   if(now - lastTime < 20) return;
-  if(document.getElementById("modalOverlay").classList.contains("show")) return;
   lastTime = now;
 
   ctx.clearRect(0,0,w,h);
@@ -1038,7 +1034,7 @@ function draw(now){
 
   ctx.globalCompositeOperation = "lighter";
 
-  // Hạt nhỏ rời ra khỏi trái tim + vài điểm lấp lánh (vẽ bằng hình chữ nhật cho nhẹ)
+  // Hạt nhỏ rời ra khỏi trái tim
   const fxAlpha = Math.max(0, 1 - cakeBuild * 6) * a;
   if(fxAlpha > 0.02){
     while(drifters.length < 150){
@@ -1055,7 +1051,6 @@ function draw(now){
         ph: Math.random() * TAU
       });
     }
-    ctx.fillStyle = "#ffc2d8";
     for(let i = drifters.length - 1; i >= 0; i--){
       const d = drifters[i];
       d.life++;
@@ -1064,31 +1059,18 @@ function draw(now){
       d.nx += d.vx + Math.sin(now * 0.001 + d.ph) * 0.01;
       d.ny += d.vy;
       const tw = 0.6 + 0.4 * Math.sin(now * 0.008 + d.ph * 3);
-      const rr = d.size * (1 - tt * 0.4);
+      const dx = heartOffsetX + d.nx * scaleAmt;
+      const dy = heartOffsetY + d.ny * scaleAmt;
       ctx.globalAlpha = fxAlpha * Math.sin(tt * Math.PI) * tw * 0.9;
-      ctx.fillRect(heartOffsetX + d.nx * scaleAmt - rr, heartOffsetY + d.ny * scaleAmt - rr, rr * 2, rr * 2);
-    }
-    const pl = (beat - 1) * 0.6;
-    ctx.fillStyle = "#fff2f7";
-    for(const g of sparkleList){
-      const st = Math.pow(Math.max(0, Math.sin(now * g.sp + g.ph)), 6);
-      if(st < 0.05) continue;
-      const gx = heartOffsetX + g.p.nx * a * (1 + pl) * scaleAmt;
-      const gy = heartOffsetY + g.p.ny * a * (1 + pl) * scaleAmt;
-      const glowRadius = 2 + st * 3;
-      const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, glowRadius);
-      glow.addColorStop(0, "rgba(255,240,248,0.9)");
-      glow.addColorStop(1, "rgba(255,180,210,0)");
-      ctx.globalAlpha = fxAlpha * st;
-      ctx.fillStyle = glow;
+      ctx.fillStyle = "#ffc2d8";
       ctx.beginPath();
-      ctx.arc(gx, gy, glowRadius, 0, TAU);
+      ctx.arc(dx, dy, d.size * (1 - tt * 0.4), 0, TAU);
       ctx.fill();
     }
   }
 
   for(const p of particles){
-    const fp = cakeBuilding ? ease(fallProgressT(p.target, cakeBuild)) : 0;
+    const fp = cakeBuilding ? ease(fallProgressFor(p.target.ny, p.target.nx, cakeBuild)) : 0;
 
     if(fp >= 1){
       const baseX = cakeCenterX + p.target.nx * cakeScale;
@@ -1101,19 +1083,20 @@ function draw(now){
       }
       const cakeTwinkle = Math.max(0, Math.sin(now * 0.006 + p.target.phase * 2.1));
       const cakeChaosX = Math.sin(now * 0.0017 + p.target.wobble) * 0.65;
-      const cakeChaosY = cakeChaosX * 0.7;
+      const cakeChaosY = Math.cos(now * 0.0021 + p.target.phase) * 0.65;
       ctx.globalAlpha = Math.min(1, p.target.baseO + cakeTwinkle * 0.18);
-      const cr = p.target.r * cakeScale * (1 + cakeTwinkle * 0.25);
+      ctx.beginPath();
+      ctx.arc(px + cakeChaosX, py + cakeChaosY, p.target.r * cakeScale * (1 + cakeTwinkle * 0.25), 0, TAU);
       ctx.fillStyle = p.target.color;
-      ctx.fillRect(px + cakeChaosX - cr, py + cakeChaosY - cr, cr * 2, cr * 2);
+      ctx.fill();
       continue;
     }
 
     p.phase += p.speed;
-    const edgeGlow = 0.52 + p.edge * 0.58;
-    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * (0.09 + p.edge * 0.17);
+    const edgeGlow = 0.52 + p.edge * 0.53;
+    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * (0.09 + p.edge * 0.16);
     const twinkle = Math.max(0, Math.sin(p.phase * 1.3 + now * 0.0045)) * edgeGlow;
-    const alpha = Math.min(0.95, (p.baseO * 0.9 + sparkle * 1.2 + twinkle * 0.23 + p.edge * 0.04) * a);
+    const alpha = Math.min(0.85, (p.baseO * 0.78 + sparkle + twinkle * 0.13) * a);
 
     if(fp <= 0){
       const pulse = (beat - 1) * 0.6;
@@ -1125,24 +1108,45 @@ function draw(now){
       const chaosY = Math.cos(now * 0.0018 + p.phase * 2.4) * (0.7 + p.r * 8);
       const twinkleSize = 1 + twinkle * 0.75;
 
-      ctx.globalAlpha = Math.min(1, alpha * 1.06);
-      const rr = p.r * scaleAmt * twinkleSize;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(
+        heartOffsetX + (x + dx) * scaleAmt + chaosX,
+        heartOffsetY + (y + dy) * scaleAmt + chaosY,
+        p.r * scaleAmt * twinkleSize,
+        0, TAU
+      );
       ctx.fillStyle = p.colorStr;
-      ctx.fillRect(heartOffsetX + (x + dx) * scaleAmt + chaosX - rr, heartOffsetY + (y + dy) * scaleAmt + chaosY - rr, rr * 2, rr * 2);
+      ctx.fill();
 
-      if(p.glint && twinkle > 0.76){
-        const glintT = (twinkle - 0.76) / 0.24;
+      if(twinkle > 0.72){
+        ctx.globalAlpha = (twinkle - 0.72) * 2.6;
+        ctx.strokeStyle = "rgba(255, 170, 200, 0.42)";
+        ctx.lineWidth = 0.75;
+        ctx.beginPath();
+        ctx.moveTo(heartOffsetX + (x + dx) * scaleAmt + chaosX - 3, heartOffsetY + (y + dy) * scaleAmt + chaosY);
+        ctx.lineTo(heartOffsetX + (x + dx) * scaleAmt + chaosX + 3, heartOffsetY + (y + dy) * scaleAmt + chaosY);
+        ctx.moveTo(heartOffsetX + (x + dx) * scaleAmt + chaosX, heartOffsetY + (y + dy) * scaleAmt + chaosY - 3);
+        ctx.lineTo(heartOffsetX + (x + dx) * scaleAmt + chaosX, heartOffsetY + (y + dy) * scaleAmt + chaosY + 3);
+        ctx.stroke();
+      }
+
+      if(p.glint && twinkle > 0.8){
+        const glintT = (twinkle - 0.8) / 0.2;
         const gx = heartOffsetX + (x + dx) * scaleAmt + chaosX;
         const gy = heartOffsetY + (y + dy) * scaleAmt + chaosY;
-        const glowRadius = Math.max(2, p.r * scaleAmt * (2 + glintT));
-        const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, glowRadius);
-        glow.addColorStop(0, "rgba(255,240,248,0.9)");
-        glow.addColorStop(1, "rgba(255,180,210,0)");
-        ctx.globalAlpha = glintT * 0.7;
-        ctx.fillStyle = glow;
+        const flareLen = 2 + glintT * 6;
+        ctx.globalAlpha = glintT * 0.55;
+        ctx.fillStyle = "#ffd0dc";
         ctx.beginPath();
-        ctx.arc(gx, gy, glowRadius, 0, TAU);
+        ctx.arc(gx, gy, p.r * scaleAmt * (1.1 + glintT * 0.7), 0, TAU);
         ctx.fill();
+        ctx.strokeStyle = "rgba(255,190,215,0.55)";
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(gx - flareLen, gy); ctx.lineTo(gx + flareLen, gy);
+        ctx.moveTo(gx, gy - flareLen); ctx.lineTo(gx, gy + flareLen);
+        ctx.stroke();
       }
     } else {
       const startX = heartOffsetX + p.nx * a * scaleAmt;
@@ -1160,15 +1164,21 @@ function draw(now){
         1.1 + Math.sin(fp * Math.PI) * 0.35
       );
 
+      const tr = Math.round(p.rgb[0] + (p.target.rgb[0]-p.rgb[0])*fp);
+      const tg = Math.round(p.rgb[1] + (p.target.rgb[1]-p.rgb[1])*fp);
+      const tb = Math.round(p.rgb[2] + (p.target.rgb[2]-p.rgb[2])*fp);
+
       ctx.globalAlpha = alpha * (0.2 + 0.8 * ease(fp));
-      ctx.fillStyle = fp < 0.5 ? p.colorStr : p.target.colorStr;
-      ctx.fillRect(curX - curR, curY - curR, curR * 2, curR * 2);
+      ctx.beginPath();
+      ctx.arc(curX, curY, curR, 0, TAU);
+      ctx.fillStyle = `rgb(${tr},${tg},${tb})`;
+      ctx.fill();
     }
   }
 
   if(cakeBuilding){
     for(const ep of extraParticles){
-      const fp = ease(fallProgressT(ep.target, cakeBuild));
+      const fp = ease(fallProgressFor(ep.target.ny, ep.target.nx, cakeBuild));
       if(fp <= 0) continue;
 
       if(fp >= 1){
@@ -1181,9 +1191,10 @@ function draw(now){
           py += Math.sin(now*0.0025 + ep.target.wobble) * 7 * flameFit;
         }
         ctx.globalAlpha = ep.target.baseO;
-        const er = ep.target.r * cakeScale;
+        ctx.beginPath();
+        ctx.arc(px, py, ep.target.r * cakeScale, 0, TAU);
         ctx.fillStyle = ep.target.color;
-        ctx.fillRect(px - er, py - er, er * 2, er * 2);
+        ctx.fill();
         continue;
       }
 
@@ -1205,9 +1216,15 @@ function draw(now){
         1.1 + Math.sin(fp * Math.PI) * 0.35
       );
 
+      const tr = Math.round(ep.rgb[0] + (ep.target.rgb[0]-ep.rgb[0])*fp);
+      const tg = Math.round(ep.rgb[1] + (ep.target.rgb[1]-ep.rgb[1])*fp);
+      const tb = Math.round(ep.rgb[2] + (ep.target.rgb[2]-ep.rgb[2])*fp);
+
       ctx.globalAlpha = (ep.target.baseO + sparkle) * fp;
-      ctx.fillStyle = fp < 0.5 ? ep.colorStr : ep.target.colorStr;
-      ctx.fillRect(curX - curR, curY - curR, curR * 2, curR * 2);
+      ctx.beginPath();
+      ctx.arc(curX, curY, curR, 0, TAU);
+      ctx.fillStyle = `rgb(${tr},${tg},${tb})`;
+      ctx.fill();
     }
   }
 
@@ -1253,13 +1270,13 @@ const EMOJIS = ["✦", "✧", "✶", "✷", "✹", "❈", "❉", "⋆", "⭒", "
 
 const PHOTO_COUNT = 18;
 const WISHES = [
-  "Chúc Vân luôn vui vẻ, hạnh phúc và rực rỡ như những vì sao ✨",
+  "Chúc mừng sinh nhật Vân Vân nhé ✨",
   "Mong mọi điều tốt đẹp nhất sẽ luôn đến bên cạnh 💖",
   "Chúc tuổi mới thật nhiều niềm vui, may mắn và yêu thương 🎂",
   "Hy vọng sang tuổi mới Vân Vân t biết sẽ ngày càng vi vẻ hơn🌟",
   "Chúc Vân có một sinh nhật đáng nhớ và thật ấm áp 💌",
   "Đi làm nhớ ăn sáng đủ kẻo lại đau đầu nhá 🌠",
-  "Chúc bạn luôn được yêu thương và gặp thật nhiều điều ngọt ngào 💕",
+  "Chúc m luôn được yêu thương và gặp thật nhiều điều ngọt ngào 💕",
   "Tuổi mới thật xinh đẹp, bình an và thành công nhé 🌷",
   "Chúc m luôn giữ được năng lượng tích cực và luôn cười như Vân t biết 😊",
   "Khi nào t về thì đừng có quên mặt t đấy  ✨",
@@ -1352,8 +1369,8 @@ function spawnEmoji(){
     startX = rightMin + Math.random() * Math.max(20, (window.innerWidth - 40 - rightMin));
   }
 
-  // Kích thước hạt rơi: chỉnh 1.12 (điện thoại) và 0.72 (máy tính) để to/nhỏ hơn
-  const mobileScale = Math.min(window.innerWidth, window.innerHeight) <= 700 ? 1.12 : 0.72;
+  // Kích thước hạt rơi: chỉnh số 1.4 (điện thoại) và 0.9 (máy tính) để to/nhỏ hơn
+  const mobileScale = Math.min(window.innerWidth, window.innerHeight) <= 700 ? 1.4 : 0.9;
   const size = (isFlower
     ? 22 + Math.random() * 10
     : (14 + Math.random() * 10) * 1.5) * mobileScale;
@@ -1368,15 +1385,28 @@ function spawnEmoji(){
 
   document.body.appendChild(el);
 
+  const startTime = performance.now();
   const endY = window.innerHeight + 80;
-  const anim = el.animate([
-    { transform: `translate3d(0px, -60px, 0) rotate(0deg)` },
-    { transform: `translate3d(${sway}px, ${-60 + (endY + 60) * 0.25}px, 0) rotate(${rotateEnd * 0.25}deg)`, offset: 0.25 },
-    { transform: `translate3d(0px, ${-60 + (endY + 60) * 0.5}px, 0) rotate(${rotateEnd * 0.5}deg)`, offset: 0.5 },
-    { transform: `translate3d(${-sway}px, ${-60 + (endY + 60) * 0.75}px, 0) rotate(${rotateEnd * 0.75}deg)`, offset: 0.75 },
-    { transform: `translate3d(0px, ${endY}px, 0) rotate(${rotateEnd}deg)` }
-  ], { duration: duration * 1000, easing: "linear", fill: "forwards" });
-  anim.onfinish = () => el.remove();
+
+  function animate(now){
+    const elapsed = (now - startTime) / 1000;
+    const progress = elapsed / duration;
+
+    if(progress >= 1){
+      el.remove();
+      return;
+    }
+
+    const y = -60 + progress * (endY + 60);
+    const x = Math.sin(progress * Math.PI * 2) * sway;
+    const rot = rotateEnd * progress;
+
+    el.style.transform = `translate(${x}px, 0px) rotate(${rot}deg)`;
+    el.style.top = y + "px";
+
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
 
   el.addEventListener("click", (e) => {
     e.stopPropagation();
