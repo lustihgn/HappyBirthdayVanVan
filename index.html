@@ -2,6 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Particle Heart – Build From Center</title>
 <style>
 html, body {
@@ -92,10 +93,10 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
 
 #photoFrame {
   position: relative;
-  display: inline-flex;
-  max-width: min(84%, 780px);
-  max-height: min(66vh, 760px);
-  padding: 9px;
+  display: flex;
+  width: min(92%, 720px);
+  max-height: min(68vh, 800px);
+  padding: 10px;
   box-sizing: border-box;
   border: 1px solid rgba(255, 224, 199, 0.95);
   border-radius: 22px;
@@ -129,8 +130,9 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
 #photoFrame img {
   display: block;
   box-sizing: border-box;
-  max-width: 100%;
-  max-height: min(calc(66vh - 20px), 740px);
+  width: 100%;
+  height: auto;
+  max-height: min(calc(68vh - 20px), 780px);
   border: 1px solid rgba(255, 248, 242, 0.9);
   border-radius: 14px;
   object-fit: cover;
@@ -138,12 +140,37 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
 }
 
 #modalCaption {
-  margin-top: 14px;
+  position: relative;
+  margin-top: 18px;
+  padding: 14px 26px;
   font-size: 20px;
-  opacity: 0.9;
-  line-height: 1.45;
-  max-width: 88%;
+  line-height: 1.5;
+  max-width: min(88%, 640px);
+  color: #ffe6ee;
+  border: 2px solid transparent;
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, #3a1422, #1f0810) padding-box,
+    linear-gradient(135deg, #fff0d6 0%, #eaa1ad 25%, #a64d6a 50%, #f4c4bc 75%, #fff0d6 100%) border-box;
+  box-shadow: 0 0 0 3px rgba(255, 183, 200, 0.16), 0 8px 24px rgba(255, 90, 150, 0.22), inset 0 0 18px rgba(255, 150, 180, 0.12);
 }
+#modalCaption::before,
+#modalCaption::after {
+  content: "❀";
+  position: absolute;
+  top: -11px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: #fff2d8;
+  border: 1px solid rgba(255, 230, 205, 0.9);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #e995ad, #9d3d5c);
+}
+#modalCaption::before { left: 16px; }
+#modalCaption::after { right: 16px; }
 
 #modalNumber {
   margin-top: 8px;
@@ -157,6 +184,7 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
 }
 
 #modalClose {
+  display: none;
   position: absolute;
   top: 10px;
   right: 14px;
@@ -178,15 +206,15 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
   }
 
   #photoFrame {
-    max-width: 84vw;
-    max-height: 62vh;
+    width: 92vw;
+    max-height: 66vh;
     padding: 7px;
     border-radius: 18px;
   }
 
   #photoFrame img {
     max-width: 100%;
-    max-height: calc(62vh - 14px);
+    max-height: calc(66vh - 14px);
     border-radius: 11px;
   }
 
@@ -194,7 +222,8 @@ canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0
     margin-top: 10px;
     font-size: 18px;
     line-height: 1.4;
-    max-width: 90%;
+    max-width: 88%;
+    padding: 12px 18px;
   }
 
   .falling-emoji {
@@ -288,19 +317,6 @@ function sampleHeartPoint(){
   }
 }
 
-const outerSparkles = Array.from({length: 90}, () => {
-  const angle = Math.random() * TAU;
-  const edge = heart(angle);
-  const distance = 1.08 + Math.random() * 0.28;
-  return {
-    nx: edge.x * distance,
-    ny: edge.y * distance,
-    size: 0.7 + Math.random() * 1.4,
-    phase: Math.random() * TAU,
-    speed: 0.7 + Math.random() * 1.3
-  };
-});
-
 function generate(){
   particles.length = 0;
   while(particles.length < COUNT){
@@ -330,7 +346,6 @@ const ac = artCanvas.getContext("2d");
 
 function cEllipse(c, x, y, rx, ry, fill){ c.beginPath(); c.ellipse(x,y,rx,ry,0,0,TAU); fill ? c.fill() : c.stroke(); }
 function cLine(c, points, width){ width = width===undefined?3:width; c.beginPath(); c.moveTo(points[0][0],points[0][1]); for(let i=1;i<points.length;i++) c.lineTo(points[i][0],points[i][1]); c.lineWidth=width; c.stroke(); }
-function cCurve(c, x, y, w, h){ c.beginPath(); c.moveTo(x,y); c.bezierCurveTo(x+w*.2,y+h, x+w*.8,y+h, x+w,y); c.stroke(); }
 
 function sprinkleRow(c, xStart, xEnd, step, y, opts){
   opts = opts || {};
@@ -960,6 +975,7 @@ function ease(t){
   return t * t * (3 - 2 * t);
 }
 
+const drifters = [];
 let lastTime = 0;
 
 function draw(now){
@@ -1013,7 +1029,7 @@ function draw(now){
   const heartOffsetX = w/2;
   const heartOffsetY = h/2 - h*0.30;
   // Scale the heart to the viewport so it stays within the screen on phones and desktops.
-  const scaleAmt = Math.min(w * 0.024, h * 0.018) * beat;
+  const scaleAmt = Math.min(w * 0.024, h * 0.018) * 0.9 * beat;
 
   const cakeScale = Math.min(w, h) * (w <= 600 ? 0.47 : 0.53);
   const cakeCenterX = w/2;
@@ -1022,6 +1038,42 @@ function draw(now){
   const flameFit = cakeScale / ART_HALF;
 
   ctx.globalCompositeOperation = "lighter";
+
+  // Hạt nhỏ rời ra khỏi trái tim
+  const fxAlpha = Math.max(0, 1 - cakeBuild * 6) * a;
+  if(fxAlpha > 0.02){
+    while(drifters.length < 150){
+      const src = particles[Math.floor(Math.random() * COUNT)];
+      if(src.edge < 0.55) continue;
+      const ang = Math.atan2(src.ny, src.nx);
+      const sp = 0.012 + Math.random() * 0.03;
+      const max = 140 + Math.random() * 160;
+      drifters.push({
+        nx: src.nx, ny: src.ny,
+        vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp - 0.008,
+        life: Math.random() * max, max,
+        size: 0.5 + Math.random() * 1.1,
+        ph: Math.random() * TAU
+      });
+    }
+    for(let i = drifters.length - 1; i >= 0; i--){
+      const d = drifters[i];
+      d.life++;
+      const tt = d.life / d.max;
+      if(tt >= 1){ drifters.splice(i, 1); continue; }
+      d.nx += d.vx + Math.sin(now * 0.001 + d.ph) * 0.01;
+      d.ny += d.vy;
+      const tw = 0.6 + 0.4 * Math.sin(now * 0.008 + d.ph * 3);
+      const dx = heartOffsetX + d.nx * scaleAmt;
+      const dy = heartOffsetY + d.ny * scaleAmt;
+      ctx.globalAlpha = fxAlpha * Math.sin(tt * Math.PI) * tw * 0.9;
+      ctx.fillStyle = "#ffc2d8";
+      ctx.beginPath();
+      ctx.arc(dx, dy, d.size * (1 - tt * 0.4), 0, TAU);
+      ctx.fill();
+    }
+  }
+
   for(const p of particles){
     const fp = cakeBuilding ? ease(fallProgressFor(p.target.ny, p.target.nx, cakeBuild)) : 0;
 
@@ -1046,8 +1098,8 @@ function draw(now){
     }
 
     p.phase += p.speed;
-    const edgeGlow = 0.52 + p.edge * 0.48;
-    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * (0.09 + p.edge * 0.14);
+    const edgeGlow = 0.52 + p.edge * 0.53;
+    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * (0.09 + p.edge * 0.16);
     const twinkle = Math.max(0, Math.sin(p.phase * 1.3 + now * 0.0045)) * edgeGlow;
     const alpha = Math.min(0.85, (p.baseO * 0.78 + sparkle + twinkle * 0.13) * a);
 
@@ -1223,13 +1275,13 @@ const EMOJIS = ["✦", "✧", "✶", "✷", "✹", "❈", "❉", "⋆", "⭒", "
 
 const PHOTO_COUNT = 18;
 const WISHES = [
-  "Chúc Vân luôn vui vẻ, hạnh phúc và rực rỡ như những vì sao ✨",
+  "Chúc mừng sinh nhật Vân Vân nhé ✨",
   "Mong mọi điều tốt đẹp nhất sẽ luôn đến bên cạnh 💖",
   "Chúc tuổi mới thật nhiều niềm vui, may mắn và yêu thương 🎂",
   "Hy vọng sang tuổi mới Vân Vân t biết sẽ ngày càng vi vẻ hơn🌟",
   "Chúc Vân có một sinh nhật đáng nhớ và thật ấm áp 💌",
   "Đi làm nhớ ăn sáng đủ kẻo lại đau đầu nhá 🌠",
-  "Chúc bạn luôn được yêu thương và gặp thật nhiều điều ngọt ngào 💕",
+  "Chúc m luôn được yêu thương và gặp thật nhiều điều ngọt ngào 💕",
   "Tuổi mới thật xinh đẹp, bình an và thành công nhé 🌷",
   "Chúc m luôn giữ được năng lượng tích cực và luôn cười như Vân t biết 😊",
   "Khi nào t về thì đừng có quên mặt t đấy  ✨",
@@ -1298,10 +1350,8 @@ function closeModal(){
   modalOverlay.classList.remove("show");
 }
 
-modalClose.addEventListener("click", closeModal);
-modalOverlay.addEventListener("click", (e) => {
-  if(e.target === modalOverlay) closeModal();
-});
+// Chạm vào bất kỳ đâu trên màn hình để thoát ảnh
+modalOverlay.addEventListener("click", closeModal);
 
 function spawnEmoji(){
   const el = document.createElement("div");
@@ -1324,10 +1374,11 @@ function spawnEmoji(){
     startX = rightMin + Math.random() * Math.max(20, (window.innerWidth - 40 - rightMin));
   }
 
-  const mobileScale = window.innerWidth <= 600 ? 1.44 : 1;
+  // Kích thước hạt rơi: chỉnh số 1.4 (điện thoại) và 0.9 (máy tính) để to/nhỏ hơn
+  const mobileScale = Math.min(window.innerWidth, window.innerHeight) <= 700 ? 1.4 : 0.9;
   const size = (isFlower
-    ? 16 + Math.random() * 8
-    : (14 + Math.random() * 10) * 2) * mobileScale;
+    ? 22 + Math.random() * 10
+    : (14 + Math.random() * 10) * 1.5) * mobileScale;
   const duration = isFlower
     ? 9 + Math.random() * 4
     : 7 + Math.random() * 5;
