@@ -1075,11 +1075,15 @@ function draw(now){
       if(st < 0.05) continue;
       const gx = heartOffsetX + g.p.nx * a * (1 + pl) * scaleAmt;
       const gy = heartOffsetY + g.p.ny * a * (1 + pl) * scaleAmt;
-      const len = 3 + st * 7;
+      const glowRadius = 2 + st * 3;
+      const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, glowRadius);
+      glow.addColorStop(0, "rgba(255,240,248,0.9)");
+      glow.addColorStop(1, "rgba(255,180,210,0)");
       ctx.globalAlpha = fxAlpha * st;
-      ctx.fillRect(gx - len, gy - 0.6, len * 2, 1.2);
-      ctx.fillRect(gx - 0.6, gy - len, 1.2, len * 2);
-      ctx.fillRect(gx - 1.4, gy - 1.4, 2.8, 2.8);
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(gx, gy, glowRadius, 0, TAU);
+      ctx.fill();
     }
   }
 
@@ -1106,10 +1110,10 @@ function draw(now){
     }
 
     p.phase += p.speed;
-    const edgeGlow = 0.52 + p.edge * 0.48;
-    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * (0.09 + p.edge * 0.14);
+    const edgeGlow = 0.52 + p.edge * 0.58;
+    const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * (0.09 + p.edge * 0.17);
     const twinkle = Math.max(0, Math.sin(p.phase * 1.3 + now * 0.0045)) * edgeGlow;
-    const alpha = Math.min(0.95, (p.baseO * 0.9 + sparkle * 1.2 + twinkle * 0.18) * a);
+    const alpha = Math.min(0.95, (p.baseO * 0.9 + sparkle * 1.2 + twinkle * 0.23 + p.edge * 0.04) * a);
 
     if(fp <= 0){
       const pulse = (beat - 1) * 0.6;
@@ -1121,27 +1125,24 @@ function draw(now){
       const chaosY = Math.cos(now * 0.0018 + p.phase * 2.4) * (0.7 + p.r * 8);
       const twinkleSize = 1 + twinkle * 0.75;
 
-      ctx.globalAlpha = alpha;
+      ctx.globalAlpha = Math.min(1, alpha * 1.06);
       const rr = p.r * scaleAmt * twinkleSize;
       ctx.fillStyle = p.colorStr;
       ctx.fillRect(heartOffsetX + (x + dx) * scaleAmt + chaosX - rr, heartOffsetY + (y + dy) * scaleAmt + chaosY - rr, rr * 2, rr * 2);
 
-      if(p.glint && twinkle > 0.8){
-        const glintT = (twinkle - 0.8) / 0.2;
+      if(p.glint && twinkle > 0.76){
+        const glintT = (twinkle - 0.76) / 0.24;
         const gx = heartOffsetX + (x + dx) * scaleAmt + chaosX;
         const gy = heartOffsetY + (y + dy) * scaleAmt + chaosY;
-        const flareLen = 2 + glintT * 6;
-        ctx.globalAlpha = glintT * 0.55;
-        ctx.fillStyle = "#ffd0dc";
+        const glowRadius = Math.max(2, p.r * scaleAmt * (2 + glintT));
+        const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, glowRadius);
+        glow.addColorStop(0, "rgba(255,240,248,0.9)");
+        glow.addColorStop(1, "rgba(255,180,210,0)");
+        ctx.globalAlpha = glintT * 0.7;
+        ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.arc(gx, gy, p.r * scaleAmt * (1.1 + glintT * 0.7), 0, TAU);
+        ctx.arc(gx, gy, glowRadius, 0, TAU);
         ctx.fill();
-        ctx.strokeStyle = "rgba(255,190,215,0.55)";
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(gx - flareLen, gy); ctx.lineTo(gx + flareLen, gy);
-        ctx.moveTo(gx, gy - flareLen); ctx.lineTo(gx, gy + flareLen);
-        ctx.stroke();
       }
     } else {
       const startX = heartOffsetX + p.nx * a * scaleAmt;
