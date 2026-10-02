@@ -11,7 +11,7 @@ html, body {
   background: #0b0a24;
   overflow: hidden;
 }
-canvas { display: block; filter: brightness(1.08) saturate(1.12) drop-shadow(0 0 12px rgba(255,90,150,0.28)); }
+canvas { display: block; filter: brightness(1.08) saturate(1.3) drop-shadow(0 0 5px rgba(255,90,150,0.2)); }
 
 /* ===== EMOJI RƠI ===== */
 .falling-emoji {
@@ -279,7 +279,7 @@ function resize(){
 window.addEventListener("resize", resize);
 resize();
 
-const COUNT = 14000;
+const COUNT = 13200;
 const particles = [];
 
 const HEART_CENTER_RGB = [255, 205, 220];
@@ -717,9 +717,9 @@ function edgeDarkenFactor(x, y){
 function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
   const flame = y >= 118 && y <= 174 && x >= 343 && x <= 360;
   const density = alphaVal / 255;
-  const baseO = 0.55 + Math.random()*0.15 + density*0.25;
+  const baseO = Math.min(0.98, 0.78 + Math.random()*0.12 + density*0.1);
 
-  let mixT = (1 - density) * 0.85;
+  let mixT = (1 - density) * 0.95;
   mixT = Math.min(0.98, mixT + edgeDarkenFactor(x, y) * 0.4);
 
   const isIcing = sourceR > 245 && sourceG > 175 && sourceB > 190;
@@ -1026,7 +1026,7 @@ function draw(now){
   // Scale the heart to the viewport so it stays within the screen on phones and desktops.
   const scaleAmt = Math.min(w * 0.024, h * 0.018) * 0.9 * beat;
 
-  const cakeScale = Math.min(w, h) * (w <= 600 ? 0.47 : 0.53);
+  const cakeScale = Math.min(w, h) * (w <= 600 ? 0.49 : 0.55);
   const cakeCenterX = w/2;
   const cakeCenterY = heartOffsetY + h*0.27;
   const cakeBreath = 1 + Math.sin(now * 0.0012) * 0.03;
@@ -1159,10 +1159,7 @@ function draw(now){
       const arcLift = Math.sin(fp * Math.PI) * cakeScale * 0.035;
       const curX = startX + (endX - startX) * fp + Math.cos(swirlAngle) * swirlRadius;
       const curY = startY + (endY - startY) * fp + Math.sin(swirlAngle) * swirlRadius - arcLift;
-      const curR = Math.max(
-        p.r * scaleAmt + (p.target.r * cakeScale - p.r * scaleAmt) * fp,
-        1.1 + Math.sin(fp * Math.PI) * 0.35
-      );
+      const curR = p.r * scaleAmt + (p.target.r * cakeScale - p.r * scaleAmt) * fp;
 
       const tr = Math.round(p.rgb[0] + (p.target.rgb[0]-p.rgb[0])*fp);
       const tg = Math.round(p.rgb[1] + (p.target.rgb[1]-p.rgb[1])*fp);
@@ -1211,10 +1208,7 @@ function draw(now){
       const arcLift = Math.sin(fp * Math.PI) * cakeScale * 0.035;
       const curX = startX + (endX - startX) * fp + Math.cos(swirlAngle) * swirlRadius;
       const curY = startY + (endY - startY) * fp + Math.sin(swirlAngle) * swirlRadius - arcLift;
-      const curR = Math.max(
-        ep.r * scaleAmt + (ep.target.r * cakeScale - ep.r * scaleAmt) * fp,
-        1.1 + Math.sin(fp * Math.PI) * 0.35
-      );
+      const curR = ep.r * scaleAmt + (ep.target.r * cakeScale - ep.r * scaleAmt) * fp;
 
       const tr = Math.round(ep.rgb[0] + (ep.target.rgb[0]-ep.rgb[0])*fp);
       const tg = Math.round(ep.rgb[1] + (ep.target.rgb[1]-ep.rgb[1])*fp);
