@@ -734,9 +734,9 @@ function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
   const clamp255 = v => Math.max(0, Math.min(255, Math.round(v)));
   const isIcing = sourceR > 245 && sourceG > 175 && sourceB > 190;
   const rgb = isIcing ? [255, 246, 249] : [
-    255,
-    clamp255(40 + 200 * kHi + jit),
-    clamp255(130 + 116 * kHi + jit)
+    250,
+    clamp255(36 + 190 * kHi + jit),
+    clamp255(145 + 110 * kHi + jit)
   ];
   const color = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 
@@ -750,7 +750,11 @@ function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
     flame,
     phase: Math.random()*TAU,
     drift: Math.random()*1.3,
-    wobble: Math.random()*TAU
+    wobble: Math.random()*TAU,
+    flicker: Math.random() < 0.035,
+    flickerPhase: Math.random()*TAU,
+    flickerSpeed: 0.0015 + Math.random()*0.003,
+    glint: Math.random() < (0.002 + density * 0.018)
   };
 }
 
@@ -984,6 +988,26 @@ function ease(t){
   return t * t * (3 - 2 * t);
 }
 
+function drawCakeSparkle(x, y, phase, glint, now){
+  if(!glint) return;
+  const twinkle = Math.max(0, Math.sin(phase * 1.3 + now * 0.0045));
+  if(twinkle < 0.94) return;
+
+  // Tiny, occasional four-point glint, matching the heart's soft particle sparkle.
+  const strength = (twinkle - 0.94) / 0.06;
+  const flare = 2 + strength * 2;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = strength * 0.28;
+  ctx.strokeStyle = "rgba(255, 235, 245, 0.8)";
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(x - flare, y); ctx.lineTo(x + flare, y);
+  ctx.moveTo(x, y - flare); ctx.lineTo(x, y + flare);
+  ctx.stroke();
+  ctx.restore();
+}
+
 const drifters = [];
 let lastTime = 0;
 
@@ -1097,15 +1121,18 @@ function draw(now){
         px += Math.sin(now*0.004 + p.target.phase) * (6 + p.target.drift*4) * flameFit;
         py += Math.sin(now*0.0025 + p.target.wobble) * 7 * flameFit;
       }
-      const cakeTwinkle = Math.max(0, Math.sin(now * 0.006 + p.target.phase * 2.1));
-      const cakeChaosX = Math.sin(now * 0.0017 + p.target.wobble) * 0.08;
-      const cakeChaosY = Math.cos(now * 0.0021 + p.target.phase) * 0.08;
+      const cakeChaosX = Math.sin(now * 0.0017 + p.target.wobble) * 0.35;
+      const cakeChaosY = Math.cos(now * 0.0021 + p.target.phase) * 0.3;
       ctx.globalCompositeOperation = "source-over";
-      ctx.globalAlpha = Math.min(1, p.target.baseO + cakeTwinkle * 0.18);
+      const flicker = p.target.flicker
+        ? 0.82 + 0.18 * (0.5 + 0.5 * Math.sin(now * p.target.flickerSpeed + p.target.flickerPhase))
+        : 1;
+      ctx.globalAlpha = p.target.baseO * flicker;
       ctx.beginPath();
-      ctx.arc(px + cakeChaosX, py + cakeChaosY, Math.max(0.65, p.target.r * cakeScale * (1 + cakeTwinkle * 0.1)), 0, TAU);
+      ctx.arc(px + cakeChaosX, py + cakeChaosY, Math.max(0.65, p.target.r * cakeScale), 0, TAU);
       ctx.fillStyle = p.target.color;
       ctx.fill();
+      drawCakeSparkle(px + cakeChaosX, py + cakeChaosY, p.target.phase, p.target.glint, now);
       ctx.globalCompositeOperation = "lighter";
       continue;
     }
@@ -1205,12 +1232,18 @@ function draw(now){
           px += Math.sin(now*0.004 + ep.target.phase) * (6 + ep.target.drift*4) * flameFit;
           py += Math.sin(now*0.0025 + ep.target.wobble) * 7 * flameFit;
         }
+        const cakeDriftX = Math.sin(now * 0.0017 + ep.target.wobble) * 0.35;
+        const cakeDriftY = Math.cos(now * 0.0021 + ep.target.phase) * 0.3;
         ctx.globalCompositeOperation = "source-over";
-        ctx.globalAlpha = ep.target.baseO;
+        const flicker = ep.target.flicker
+          ? 0.82 + 0.18 * (0.5 + 0.5 * Math.sin(now * ep.target.flickerSpeed + ep.target.flickerPhase))
+          : 1;
+        ctx.globalAlpha = ep.target.baseO * flicker;
         ctx.beginPath();
-        ctx.arc(px, py, Math.max(0.65, ep.target.r * cakeScale), 0, TAU);
+        ctx.arc(px + cakeDriftX, py + cakeDriftY, Math.max(0.65, ep.target.r * cakeScale), 0, TAU);
         ctx.fillStyle = ep.target.color;
         ctx.fill();
+        drawCakeSparkle(px + cakeDriftX, py + cakeDriftY, ep.target.phase, ep.target.glint, now);
         ctx.globalCompositeOperation = "lighter";
         continue;
       }
