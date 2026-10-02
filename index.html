@@ -11,7 +11,7 @@ html, body {
   background: #0b0a24;
   overflow: hidden;
 }
-canvas { display: block; filter: brightness(1.08) saturate(1.3) drop-shadow(0 0 5px rgba(255,90,150,0.2)); }
+canvas { display: block; filter: brightness(1.08) saturate(1.3); }
 
 /* ===== EMOJI RƠI ===== */
 .falling-emoji {
@@ -27,7 +27,7 @@ canvas { display: block; filter: brightness(1.08) saturate(1.3) drop-shadow(0 0 
   filter: drop-shadow(0 0 3px rgba(255,255,255,0.55));
   text-shadow: 0 0 3px rgba(255,255,255,0.8), 0 0 7px rgba(255,255,255,0.35);
   transition: transform 0.15s ease, filter 0.15s ease;
-  will-change: transform, top;
+  will-change: transform;
 }
 .falling-emoji:hover {
   transform: scale(1.35) rotate(12deg);
@@ -252,7 +252,8 @@ let w, h;
 const bgCanvas = document.createElement("canvas");
 const bgCtx = bgCanvas.getContext("2d");
 function buildBg(){
-  bgCanvas.width = w; bgCanvas.height = h;
+  bgCanvas.width = Math.round(w * dpr); bgCanvas.height = Math.round(h * dpr);
+  bgCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const skyGrad = bgCtx.createLinearGradient(0, 0, 0, h);
   skyGrad.addColorStop(0, "#050514");
   skyGrad.addColorStop(0.55, "#0b0a24");
@@ -271,9 +272,16 @@ function buildBg(){
   }
   bgCtx.globalAlpha = 1;
 }
+let dpr = 1;
 function resize(){
-  w = canvas.width = window.innerWidth;
-  h = canvas.height = window.innerHeight;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  w = window.innerWidth;
+  h = window.innerHeight;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   buildBg();
 }
 window.addEventListener("resize", resize);
@@ -717,23 +725,25 @@ function edgeDarkenFactor(x, y){
 function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
   const flame = y >= 118 && y <= 174 && x >= 343 && x <= 360;
   const density = alphaVal / 255;
-  const baseO = Math.min(0.98, 0.78 + Math.random()*0.12 + density*0.1);
+  const baseO = Math.min(1, 0.96 + Math.random()*0.04);
 
-  let mixT = (1 - density) * 0.95;
-  mixT = Math.min(0.98, mixT + edgeDarkenFactor(x, y) * 0.4);
-
+  // Tương phản tối đa: nét viền/đường chính gần trắng hồng, thân bánh hồng đậm rực,
+  // mỗi hạt lệch sáng nhẹ để nhìn rõ từng hạt riêng biệt.
+  const kHi = Math.min(1, density * 1.5 + edgeDarkenFactor(x, y) * 0.35);
+  const jit = Math.random() * 26 - 13;
+  const clamp255 = v => Math.max(0, Math.min(255, Math.round(v)));
   const isIcing = sourceR > 245 && sourceG > 175 && sourceB > 190;
-  const rgb = isIcing ? [255, 218, 230] : [
-    Math.round(HEART_CENTER_RGB[0] + (HEART_EDGE_RGB[0]-HEART_CENTER_RGB[0])*mixT),
-    Math.round(HEART_CENTER_RGB[1] + (HEART_EDGE_RGB[1]-HEART_CENTER_RGB[1])*mixT),
-    Math.round(HEART_CENTER_RGB[2] + (HEART_EDGE_RGB[2]-HEART_CENTER_RGB[2])*mixT)
+  const rgb = isIcing ? [255, 246, 249] : [
+    255,
+    clamp255(40 + 200 * kHi + jit),
+    clamp255(130 + 116 * kHi + jit)
   ];
-  const color = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${Math.min(0.97, baseO)})`;
+  const color = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 
   return {
     nx: (x - ART_HALF) / ART_HALF,
     ny: (y*0.72 - ART_CY) / ART_HALF,
-    r: (0.65 + Math.random()*0.6 + density*0.35) / ART_HALF,
+    r: (0.5 + Math.random()*0.27 + density*0.27) / ART_HALF,
     baseO,
     color,
     rgb,
@@ -744,7 +754,7 @@ function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
   };
 }
 
-const CAKE_MAX = 16000;
+const CAKE_MAX = 20000;
 const cakeTargets = [];
 function generateCakeTargets(){
   cakeTargets.length = 0;
@@ -761,10 +771,10 @@ function generateCakeTargets(){
       const t = aVal/255;
       let density;
       if(t <= bodyCeiling){
-        density = Math.pow(t/bodyCeiling, 1.6) * 0.4;
+        density = Math.pow(t/bodyCeiling, 1.6) * 0.7;
       } else {
         const u = (t - bodyCeiling)/(1 - bodyCeiling);
-        density = 0.4 + Math.pow(u, 0.35) * 0.6;
+        density = 0.7 + Math.pow(u, 0.35) * 0.3;
       }
       density = density + edgeDarkenFactor(x, y) * 0.78;
       density = Math.min(1, density);
@@ -907,6 +917,9 @@ function launchFirework(x, targetY, hue, delay){
   }, delay);
 }
 
+// Hệ số thời gian: 1 = một "khung" chuẩn ~30ms. Cập nhật mỗi frame trong draw().
+let dtk = 1;
+
 function drawFireworks(){
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
@@ -916,7 +929,7 @@ function drawFireworks(){
     r.trail.push({x: r.x, y: r.y});
     if(r.trail.length > 10) r.trail.shift();
 
-    r.y -= r.speed;
+    r.y -= r.speed * dtk;
     r.progress = Math.max(0, Math.min(1, (h + 18 - r.y) / (h + 18 - r.targetY)));
     r.x = r.startX + Math.sin(r.progress * Math.PI) * r.curve;
 
@@ -943,14 +956,15 @@ function drawFireworks(){
     }
   }
 
+  const drag = Math.pow(0.994, dtk);
   for(let i = fireworks.length - 1; i >= 0; i--){
     const p = fireworks[i];
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.012;
-    p.vx *= 0.994;
-    p.vy *= 0.994;
-    p.life -= p.decay;
+    p.x += p.vx * dtk;
+    p.y += p.vy * dtk;
+    p.vy += 0.012 * dtk;
+    p.vx *= drag;
+    p.vy *= drag;
+    p.life -= p.decay * dtk;
 
     if(p.life <= 0){
       fireworks.splice(i, 1);
@@ -975,15 +989,17 @@ let lastTime = 0;
 
 function draw(now){
   requestAnimationFrame(draw);
-  if(now - lastTime < 20) return;
+  if(!lastTime) lastTime = now;
+  const dt = Math.min(now - lastTime, 50);
   lastTime = now;
+  dtk = dt / 30;
 
   ctx.clearRect(0,0,w,h);
 
-  ctx.drawImage(bgCanvas, 0, 0);
+  ctx.drawImage(bgCanvas, 0, 0, w, h);
 
   if(building){
-    build += buildSpeed;
+    build += buildSpeed * dtk;
     if(build >= 1){
       build = 1;
       building = false;
@@ -993,7 +1009,7 @@ function draw(now){
       fireworksStarted = true;
       nextFireworkLaunch = now;
     }
-    textOpacity += textFadeSpeed;
+    textOpacity += textFadeSpeed * dtk;
     if(textOpacity > 1) textOpacity = 1;
   }
 
@@ -1011,7 +1027,7 @@ function draw(now){
   }
 
   if(cakeBuilding && cakeBuild < 1){
-    cakeBuild += cakeBuildSpeed;
+    cakeBuild += cakeBuildSpeed * dtk;
     if(cakeBuild > 1) cakeBuild = 1;
   }
 
@@ -1026,7 +1042,7 @@ function draw(now){
   // Scale the heart to the viewport so it stays within the screen on phones and desktops.
   const scaleAmt = Math.min(w * 0.024, h * 0.018) * 0.9 * beat;
 
-  const cakeScale = Math.min(w, h) * (w <= 600 ? 0.49 : 0.55);
+  const cakeScale = Math.min(w, h) * (w <= 600 ? 0.515 : 0.58);
   const cakeCenterX = w/2;
   const cakeCenterY = heartOffsetY + h*0.27;
   const cakeBreath = 1 + Math.sin(now * 0.0012) * 0.03;
@@ -1053,11 +1069,11 @@ function draw(now){
     }
     for(let i = drifters.length - 1; i >= 0; i--){
       const d = drifters[i];
-      d.life++;
+      d.life += dtk;
       const tt = d.life / d.max;
       if(tt >= 1){ drifters.splice(i, 1); continue; }
-      d.nx += d.vx + Math.sin(now * 0.001 + d.ph) * 0.01;
-      d.ny += d.vy;
+      d.nx += (d.vx + Math.sin(now * 0.001 + d.ph) * 0.01) * dtk;
+      d.ny += d.vy * dtk;
       const tw = 0.6 + 0.4 * Math.sin(now * 0.008 + d.ph * 3);
       const dx = heartOffsetX + d.nx * scaleAmt;
       const dy = heartOffsetY + d.ny * scaleAmt;
@@ -1082,17 +1098,19 @@ function draw(now){
         py += Math.sin(now*0.0025 + p.target.wobble) * 7 * flameFit;
       }
       const cakeTwinkle = Math.max(0, Math.sin(now * 0.006 + p.target.phase * 2.1));
-      const cakeChaosX = Math.sin(now * 0.0017 + p.target.wobble) * 0.65;
-      const cakeChaosY = Math.cos(now * 0.0021 + p.target.phase) * 0.65;
+      const cakeChaosX = Math.sin(now * 0.0017 + p.target.wobble) * 0.08;
+      const cakeChaosY = Math.cos(now * 0.0021 + p.target.phase) * 0.08;
+      ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = Math.min(1, p.target.baseO + cakeTwinkle * 0.18);
       ctx.beginPath();
-      ctx.arc(px + cakeChaosX, py + cakeChaosY, p.target.r * cakeScale * (1 + cakeTwinkle * 0.25), 0, TAU);
+      ctx.arc(px + cakeChaosX, py + cakeChaosY, Math.max(0.65, p.target.r * cakeScale * (1 + cakeTwinkle * 0.1)), 0, TAU);
       ctx.fillStyle = p.target.color;
       ctx.fill();
+      ctx.globalCompositeOperation = "lighter";
       continue;
     }
 
-    p.phase += p.speed;
+    p.phase += p.speed * dtk;
     const edgeGlow = 0.52 + p.edge * 0.53;
     const sparkle = (Math.sin(p.phase * 1.7 + now * 0.0022) + 1) * (0.09 + p.edge * 0.16);
     const twinkle = Math.max(0, Math.sin(p.phase * 1.3 + now * 0.0045)) * edgeGlow;
@@ -1165,7 +1183,7 @@ function draw(now){
       const tg = Math.round(p.rgb[1] + (p.target.rgb[1]-p.rgb[1])*fp);
       const tb = Math.round(p.rgb[2] + (p.target.rgb[2]-p.rgb[2])*fp);
 
-      ctx.globalAlpha = alpha * (0.2 + 0.8 * ease(fp));
+      ctx.globalAlpha = alpha * (0.2 + 0.8 * ease(fp)) * (1 - fp) + p.target.baseO * fp;
       ctx.beginPath();
       ctx.arc(curX, curY, curR, 0, TAU);
       ctx.fillStyle = `rgb(${tr},${tg},${tb})`;
@@ -1187,15 +1205,17 @@ function draw(now){
           px += Math.sin(now*0.004 + ep.target.phase) * (6 + ep.target.drift*4) * flameFit;
           py += Math.sin(now*0.0025 + ep.target.wobble) * 7 * flameFit;
         }
+        ctx.globalCompositeOperation = "source-over";
         ctx.globalAlpha = ep.target.baseO;
         ctx.beginPath();
-        ctx.arc(px, py, ep.target.r * cakeScale, 0, TAU);
+        ctx.arc(px, py, Math.max(0.65, ep.target.r * cakeScale), 0, TAU);
         ctx.fillStyle = ep.target.color;
         ctx.fill();
+        ctx.globalCompositeOperation = "lighter";
         continue;
       }
 
-      ep.phase += ep.speed;
+      ep.phase += ep.speed * dtk;
       const sparkle = (Math.sin(ep.phase) + 1) * 0.22;
 
       const startX = heartOffsetX + ep.startNx * scaleAmt;
@@ -1214,7 +1234,7 @@ function draw(now){
       const tg = Math.round(ep.rgb[1] + (ep.target.rgb[1]-ep.rgb[1])*fp);
       const tb = Math.round(ep.rgb[2] + (ep.target.rgb[2]-ep.rgb[2])*fp);
 
-      ctx.globalAlpha = (ep.target.baseO + sparkle) * fp;
+      ctx.globalAlpha = (ep.target.baseO + sparkle * (1 - fp)) * fp;
       ctx.beginPath();
       ctx.arc(curX, curY, curR, 0, TAU);
       ctx.fillStyle = `rgb(${tr},${tg},${tb})`;
@@ -1395,8 +1415,7 @@ function spawnEmoji(){
     const x = Math.sin(progress * Math.PI * 2) * sway;
     const rot = rotateEnd * progress;
 
-    el.style.transform = `translate(${x}px, 0px) rotate(${rot}deg)`;
-    el.style.top = y + "px";
+    el.style.transform = `translate3d(${x}px, ${y + 60}px, 0) rotate(${rot}deg)`;
 
     requestAnimationFrame(animate);
   }
