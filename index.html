@@ -733,10 +733,10 @@ function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
   const jit = Math.random() * 26 - 13;
   const clamp255 = v => Math.max(0, Math.min(255, Math.round(v)));
   const isIcing = sourceR > 245 && sourceG > 175 && sourceB > 190;
-  const rgb = isIcing ? [255, 246, 249] : [
-    250,
-    clamp255(36 + 190 * kHi + jit),
-    clamp255(145 + 110 * kHi + jit)
+  const rgb = isIcing ? [255, 249, 252] : [
+    255,
+    clamp255(50 + 205 * kHi + jit),
+    clamp255(160 + 95 * kHi + jit)
   ];
   const color = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
 
@@ -751,7 +751,7 @@ function makeCakeTargetParticle(x, y, alphaVal, sourceR, sourceG, sourceB){
     phase: Math.random()*TAU,
     drift: Math.random()*1.3,
     wobble: Math.random()*TAU,
-    flicker: Math.random() < 0.035,
+    flicker: Math.random() < 0.06,
     flickerPhase: Math.random()*TAU,
     flickerSpeed: 0.0015 + Math.random()*0.003,
     glint: Math.random() < (0.002 + density * 0.018)
@@ -1009,6 +1009,13 @@ function drawCakeSparkle(x, y, phase, glint, now){
 }
 
 const drifters = [];
+const xSparkles = Array.from({length: 14}, (_, i) => ({
+  path: i % 2,
+  phase: Math.random(),
+  speed: 0.00008 + Math.random() * 0.00005,
+  offset: (Math.random() - 0.5) * 0.18,
+  size: 0.7 + Math.random() * 1.1
+}));
 let lastTime = 0;
 
 function draw(now){
@@ -1069,14 +1076,39 @@ function draw(now){
   const cakeScale = Math.min(w, h) * (w <= 600 ? 0.515 : 0.58);
   const cakeCenterX = w/2;
   const cakeCenterY = heartOffsetY + h*0.27;
-  const cakeBreath = 1 + Math.sin(now * 0.0012) * 0.03;
+  const cakeBreath = 1 + Math.sin(now * 0.0015) * 0.038;
   const flameFit = cakeScale / ART_HALF;
 
   ctx.globalCompositeOperation = "lighter";
 
-  // Hạt nhỏ rời ra khỏi trái tim
+  // Hạt lấp lánh mờ lướt chéo thành chữ X quanh trái tim khi trái tim hiện ra.
   const fxAlpha = Math.max(0, 1 - cakeBuild * 6) * a;
   if(fxAlpha > 0.02){
+    for(const s of xSparkles){
+      const progress = (s.phase + now * s.speed) % 1;
+      const along = progress * 2 - 1;
+      const xNorm = (s.path === 0 ? along : -along) * 1.28 + s.offset;
+      const yNorm = along * 1.24 - s.offset;
+      const sx = heartOffsetX + xNorm * 16 * scaleAmt;
+      const sy = heartOffsetY + yNorm * 17 * scaleAmt;
+      const fade = Math.sin(progress * Math.PI) * (0.22 + 0.18 * Math.sin(now * 0.004 + s.phase * TAU));
+
+      ctx.globalAlpha = fxAlpha * Math.max(0, fade);
+      ctx.fillStyle = "#ffe8f1";
+      ctx.beginPath();
+      ctx.arc(sx, sy, s.size, 0, TAU);
+      ctx.fill();
+      if(fade > 0.28){
+        ctx.strokeStyle = "rgba(255, 225, 240, 0.55)";
+        ctx.lineWidth = 0.7;
+        ctx.beginPath();
+        ctx.moveTo(sx - 2.5, sy); ctx.lineTo(sx + 2.5, sy);
+        ctx.moveTo(sx, sy - 2.5); ctx.lineTo(sx, sy + 2.5);
+        ctx.stroke();
+      }
+    }
+
+    // Hạt nhỏ rời ra khỏi trái tim
     while(drifters.length < 150){
       const src = particles[Math.floor(Math.random() * COUNT)];
       if(src.edge < 0.55) continue;
@@ -1121,8 +1153,8 @@ function draw(now){
         px += Math.sin(now*0.004 + p.target.phase) * (6 + p.target.drift*4) * flameFit;
         py += Math.sin(now*0.0025 + p.target.wobble) * 7 * flameFit;
       }
-      const cakeChaosX = Math.sin(now * 0.0017 + p.target.wobble) * 0.35;
-      const cakeChaosY = Math.cos(now * 0.0021 + p.target.phase) * 0.3;
+      const cakeChaosX = Math.sin(now * 0.0017 + p.target.wobble) * 0.55;
+      const cakeChaosY = Math.cos(now * 0.0021 + p.target.phase) * 0.45;
       ctx.globalCompositeOperation = "source-over";
       const flicker = p.target.flicker
         ? 0.82 + 0.18 * (0.5 + 0.5 * Math.sin(now * p.target.flickerSpeed + p.target.flickerPhase))
@@ -1232,8 +1264,8 @@ function draw(now){
           px += Math.sin(now*0.004 + ep.target.phase) * (6 + ep.target.drift*4) * flameFit;
           py += Math.sin(now*0.0025 + ep.target.wobble) * 7 * flameFit;
         }
-        const cakeDriftX = Math.sin(now * 0.0017 + ep.target.wobble) * 0.35;
-        const cakeDriftY = Math.cos(now * 0.0021 + ep.target.phase) * 0.3;
+        const cakeDriftX = Math.sin(now * 0.0017 + ep.target.wobble) * 0.55;
+        const cakeDriftY = Math.cos(now * 0.0021 + ep.target.phase) * 0.45;
         ctx.globalCompositeOperation = "source-over";
         const flicker = ep.target.flicker
           ? 0.82 + 0.18 * (0.5 + 0.5 * Math.sin(now * ep.target.flickerSpeed + ep.target.flickerPhase))
